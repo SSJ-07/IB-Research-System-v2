@@ -926,25 +926,37 @@ html {
     opacity: 0.7;
 }
 
-/* Add Retrieve Knowledge button: green background */
+/* Modern Retrieve Knowledge button - matches app design */
 .retrieve-knowledge {
-    background-color: #e6fffa !important;
-    color: #16a34a !important;
-    font-weight: 400 !important;
+    background-color: #f0f2f5 !important;
+    color: #374151 !important;
+    font-weight: 500 !important;
     padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 12px;
+    border: 1px solid #e0e3e8;
+    border-radius: 20px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
     display: flex !important;
     align-items: center;
     gap: 0.5rem;
+    font-size: 14px;
+}
+
+.retrieve-knowledge:hover {
+    background-color: #e4e6eb !important;
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+.retrieve-knowledge:active {
+    transform: translateY(0);
+    background-color: #d1d5db !important;
 }
 
 .retrieve-knowledge img {
     width: 16px;
     height: 16px;
-    opacity: 0.7;
+    opacity: 0.8;
 }
 
 /* Add Refresh button: yellow background; icon-only, rounded */

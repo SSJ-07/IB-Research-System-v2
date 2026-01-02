@@ -91,27 +91,48 @@ const retrieval = {
             // Show loading state
             this.showLoadingState();
             
-            // Make the API call
+            console.log("LiteraturePanel: Starting retrieval for query:", queryToUse);
+            
+            // Make the API call with extended timeout (retrieval can take 60+ seconds)
             const response = await $.ajax({
                 url: "/api/retrieve_knowledge",
                 type: "POST",
                 contentType: "application/json",
-                data: JSON.stringify({ query: queryToUse })
+                data: JSON.stringify({ query: queryToUse }),
+                timeout: 120000  // 2 minutes timeout for retrieval
             });
+            
+            console.log("LiteraturePanel: Retrieved results:", response);
             
             // Store and display results
             if (response && response.sections) {
                 this.currentResults = response;
-                this.displayResults(response);
+                console.log("LiteraturePanel: Displaying results, sections count:", response.sections.length);
+                try {
+                    this.displayResults(response);
+                    console.log("LiteraturePanel: Results displayed successfully");
+                } catch (displayError) {
+                    console.error("LiteraturePanel: Error displaying results:", displayError);
+                    this.showErrorState("Error displaying results: " + displayError.message);
+                    return false;
+                }
                 return true;
             } else {
-                console.error("Failed to retrieve knowledge:", response);
+                console.error("LiteraturePanel: Failed to retrieve knowledge - no sections in response:", response);
                 this.showErrorState("No results found");
                 return false;
             }
         } catch (error) {
-            console.error("Error retrieving knowledge:", error);
-            this.showErrorState("Error retrieving knowledge");
+            console.error("LiteraturePanel: Error retrieving literature:", error);
+            let errorMessage = "Error retrieving knowledge";
+            if (error.status === 500) {
+                errorMessage = "Server error during retrieval. Please try again.";
+            } else if (error.statusText === "timeout" || error.status === 0) {
+                errorMessage = "Request timed out. The retrieval process can take up to 2 minutes. Please try again.";
+            } else if (error.responseJSON && error.responseJSON.error) {
+                errorMessage = error.responseJSON.error;
+            }
+            this.showErrorState(errorMessage);
             return false;
         }
     },
@@ -230,9 +251,25 @@ const retrieval = {
     
     // Display retrieval results in the left sidebar (keeping this functionality)
     displayResults: function(results) {
+        console.log("LiteraturePanel: displayResults called with:", results);
+        
+        // Verify DOM elements exist
+        const qaPlaceholder = $("#qa-placeholder");
+        const qaContent = $("#qa-content");
+        
+        if (qaPlaceholder.length === 0) {
+            console.error("LiteraturePanel: #qa-placeholder element not found");
+        }
+        if (qaContent.length === 0) {
+            console.error("LiteraturePanel: #qa-content element not found");
+            return;
+        }
+        
         // Display in left sidebar
-        $("#qa-placeholder").hide();
-        $("#qa-content").empty().show();
+        qaPlaceholder.hide();
+        qaContent.empty().show();
+        
+        console.log("LiteraturePanel: Placeholder hidden, content container shown");
         
         // Add query at the top with minimal styling
         $("#qa-content").append(`
@@ -254,17 +291,29 @@ const retrieval = {
             });
         });
         
+        // Verify sections exist
+        if (!results.sections || results.sections.length === 0) {
+            console.warn("LiteraturePanel: No sections in results");
+            qaContent.append('<div class="qa-item"><div class="answer">No sections found in results.</div></div>');
+            return;
+        }
+        
+        console.log("LiteraturePanel: Processing", results.sections.length, "sections");
+        
         // Add each section with minimalist design (thin lines instead of boxes)
-        results.sections.forEach(section => {
-            const sectionElement = $(`
-                <div class="qa-item">
-                    <div class="question">${section.title}</div>
-                    <div class="answer">
-                        <div class="section-summary">${section.summary}</div>
-                        <div class="section-content">${marked.parse(section.content)}</div>
+        results.sections.forEach((section, index) => {
+            try {
+                console.log(`LiteraturePanel: Processing section ${index + 1}:`, section.title);
+                
+                const sectionElement = $(`
+                    <div class="qa-item">
+                        <div class="question">${section.title || "Untitled Section"}</div>
+                        <div class="answer">
+                            <div class="section-summary">${section.summary || "No summary available"}</div>
+                            <div class="section-content">${marked && typeof marked.parse === 'function' ? marked.parse(section.content || "") : (section.content || "")}</div>
+                        </div>
                     </div>
-                </div>
-            `);
+                `);
             
             // Add citations if available - with dropdown functionality
             if (section.citations && section.citations.length > 0) {
@@ -327,11 +376,19 @@ const retrieval = {
                 sectionElement.find('.answer').append(citationsDropdown);
             }
             
-            $("#qa-content").append(sectionElement);
+            qaContent.append(sectionElement);
+            console.log(`LiteraturePanel: Section ${index + 1} appended to DOM`);
+        } catch (sectionError) {
+            console.error(`LiteraturePanel: Error processing section ${index + 1}:`, sectionError);
+        }
         });
+        
+        console.log("LiteraturePanel: All sections processed, total elements in qa-content:", qaContent.children().length);
         
         // Now also show a summary of results in chat area
         this.displayResultsInChat(results);
+        
+        console.log("LiteraturePanel: displayResults completed successfully");
     },
     
     // Display a summary of results in the chat area
