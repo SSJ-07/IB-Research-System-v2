@@ -65,6 +65,16 @@ function formatMessage(content) {
         // First ensure our styling for section headers is in place
         ensureSectionHeaderStyles();
         
+        // Ensure content is a string (handle arrays and other types)
+        if (Array.isArray(content)) {
+            // If content is an array, join elements or take first element
+            content = content.length > 0 ? String(content[0]) : '';
+        } else if (content === null || content === undefined) {
+            content = '';
+        } else {
+            content = String(content);
+        }
+        
         // Parse markdown content using marked
         let formattedContent = marked.parse(content);
         
@@ -587,6 +597,9 @@ function toggleAutoGenerate() {
                 completionMessage.slideDown();
                 chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
                 
+                // Save counter value before resetting (for use in success callback)
+                const savedIterationCount = mctsIterationCount;
+                
                 // Get final best result
                 $.ajax({
                     url: '/api/get_best_child',
@@ -604,20 +617,23 @@ function toggleAutoGenerate() {
                         
                         const finalMessage = $('<div></div>')
                             .attr('data-sender', 'system')
-                            .text(`🏆 Best idea selected from ${mctsIterationCount} iterations.`)
+                            .text(`🏆 Best idea selected from ${savedIterationCount} iterations.`)
                             .hide();
                         chatArea.append(finalMessage);
                         finalMessage.slideDown();
                         chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+                        
+                        // Reset counters after message is displayed
+                        mctsIterationCount = 0;
+                        currentMCTSDepth = 0;
                     },
                     error: function(xhr, status, error) {
                         console.error('Error getting best child:', error);
+                        // Reset counters even on error
+                        mctsIterationCount = 0;
+                        currentMCTSDepth = 0;
                     }
                 });
-                
-                // Reset counters
-                mctsIterationCount = 0;
-                currentMCTSDepth = 0;
                 return; // ✅ FIXED: Exit without recursive call
             }
             
@@ -648,8 +664,17 @@ function toggleAutoGenerate() {
                     
                     // Update Research Brief panel
                     if (data.idea) {
-                        const structuredIdea = parseAndFormatStructuredIdea ? 
+                        let structuredIdea = parseAndFormatStructuredIdea ? 
                             parseAndFormatStructuredIdea(data.idea) : data.idea;
+                        
+                        // Ensure structuredIdea is a string (handle arrays)
+                        if (Array.isArray(structuredIdea)) {
+                            structuredIdea = structuredIdea.length > 0 ? String(structuredIdea[0]) : '';
+                        } else if (structuredIdea !== null && structuredIdea !== undefined) {
+                            structuredIdea = String(structuredIdea);
+                        } else {
+                            structuredIdea = '';
+                        }
                         
                         $("#main-idea").html(formatMessage ? formatMessage(structuredIdea) : structuredIdea);
                         
@@ -1057,7 +1082,17 @@ function selectNode(d) {
             // Update UI to reflect selected node
             // Parse and format any JSON structure in the idea
             if (response.idea) {
-                const structuredIdea = parseAndFormatStructuredIdea(response.idea);
+                let structuredIdea = parseAndFormatStructuredIdea(response.idea);
+                
+                // Ensure structuredIdea is a string (handle arrays)
+                if (Array.isArray(structuredIdea)) {
+                    structuredIdea = structuredIdea.length > 0 ? String(structuredIdea[0]) : '';
+                } else if (structuredIdea !== null && structuredIdea !== undefined) {
+                    structuredIdea = String(structuredIdea);
+                } else {
+                    structuredIdea = '';
+                }
+                
                 $("#main-idea").html(marked.parse(structuredIdea));
             }
             
@@ -1136,7 +1171,16 @@ function refreshResearchIdea() {
                 main_idea = response.idea;
                 
                 // Force direct update to the research brief panel without parsing
-                $("#main-idea").html(marked.parse(response.idea));
+                // Ensure response.idea is a string before parsing
+                let ideaContent = response.idea;
+                if (Array.isArray(ideaContent)) {
+                    ideaContent = ideaContent.length > 0 ? String(ideaContent[0]) : '';
+                } else if (ideaContent !== null && ideaContent !== undefined) {
+                    ideaContent = String(ideaContent);
+                } else {
+                    ideaContent = '';
+                }
+                $("#main-idea").html(marked.parse(ideaContent));
                 
                 console.log("Research brief updated with new content:", $("#main-idea").html().substring(0, 100) + "...");
                 
