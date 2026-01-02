@@ -1622,6 +1622,46 @@ def get_tree():
     return jsonify(tree_data)
 
 
+@app.route("/api/get_best_child", methods=["POST"])
+def get_best_child():
+    """Get the best child node from the MCTS tree"""
+    global current_root, current_node
+    
+    try:
+        if current_root is None:
+            return jsonify({"error": "No MCTS tree available"}), 400
+        
+        # Use the existing mcts_best_child function
+        best_child = mcts_best_child(current_root)
+        
+        if best_child is None:
+            # No best child found, return current node
+            if current_node is None:
+                return jsonify({"error": "No node available"}), 400
+            
+            return jsonify({
+                "idea": current_node.state.current_idea,
+                "average_score": getattr(current_node.state, "average_score", 0.0),
+                "review_scores": getattr(current_node.state, "review_scores", {}),
+                "nodeId": current_node.id,
+                "depth": current_node.state.depth
+            })
+        
+        # Return best child's data
+        return jsonify({
+            "idea": best_child.state.current_idea,
+            "average_score": getattr(best_child.state, "average_score", 0.0),
+            "review_scores": getattr(best_child.state, "review_scores", {}),
+            "nodeId": best_child.id,
+            "depth": best_child.state.depth
+        })
+    
+    except Exception as e:
+        error_message = f"Error getting best child: {str(e)}"
+        print(error_message)
+        traceback.print_exc()
+        return jsonify({"error": error_message}), 500
+
 @app.route("/api/node", methods=["POST"])
 def select_node():
     global current_node, main_idea, chat_messages

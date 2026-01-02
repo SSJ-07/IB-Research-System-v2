@@ -148,10 +148,19 @@ function parseAndFormatStructuredIdea(ideaContent) {
                 console.log("Formatted content from JSON:", formattedContent.substring(0, 100) + "...");
                 return formattedContent;
             }
+        } else {
+            // No JSON pattern found - this is expected, silently fall back
+            // Don't log errors for normal non-JSON content
         }
     } catch (e) {
-        console.error("JSON parsing error:", e);
-        console.log("Falling back to regex extraction...");
+        // Only log if we actually found a JSON pattern but parsing failed
+        // This indicates a real parsing issue, not just non-JSON content
+        const jsonPattern = /({[\s\S]*})/g;
+        const match = jsonPattern.exec(ideaContent);
+        if (match && match[1]) {
+            console.warn("JSON parsing error (pattern found but invalid):", e.message);
+        }
+        // Silently fall back to regex extraction for normal cases
         
         // FALLBACK: Use regex extraction when JSON parsing fails
         try {
@@ -1063,7 +1072,9 @@ function selectNode(d) {
             
             // Scroll history to bottom
             const historyLog = document.getElementById("history-log");
-            historyLog.scrollTop = historyLog.scrollHeight;
+            if (historyLog) {
+                historyLog.scrollTop = historyLog.scrollHeight;
+            }
         },
         error: function(error) {
             console.error("Error selecting node:", error);
