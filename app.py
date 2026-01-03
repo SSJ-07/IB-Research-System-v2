@@ -375,6 +375,17 @@ def get_llm_client_info():
     except Exception as e:
         return jsonify({"error": f"Failed to get client info: {str(e)}"}), 500
 
+def get_latest_feedback(feedback_dict):
+    """Extract the most recent feedback message from feedback dictionary"""
+    if not feedback_dict or not isinstance(feedback_dict, dict):
+        return None
+    if len(feedback_dict) == 0:
+        return None
+    # Sort by timestamp (key) and get most recent
+    sorted_entries = sorted(feedback_dict.items(), reverse=True)
+    return sorted_entries[0][1]  # Return the message (value)
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -553,6 +564,7 @@ def chat():
                     "initial_proposal": current_root.state.research_goal if current_root else user_message,
                     "review_scores": getattr(current_node.state, "review_scores", {}),
                     "average_score": getattr(current_node.state, "average_score", 0.0),
+                    "feedback": get_latest_feedback(getattr(current_node.state, "feedback", {})),
                 }
             )
                 
@@ -1233,7 +1245,8 @@ def step():
             "review_scores": getattr(current_node.state, "review_scores", {}),
             "average_score": getattr(current_node.state, "average_score", 0.0),
             "retrieved_knowledge": bool(current_node.state.retrieved_knowledge),
-            "has_feedback": bool(current_node.state.feedback)
+            "has_feedback": bool(current_node.state.feedback),
+            "feedback": get_latest_feedback(getattr(current_node.state, "feedback", {}))
         })
 
     except Exception as e:
@@ -1644,7 +1657,8 @@ def get_best_child():
                 "average_score": getattr(current_node.state, "average_score", 0.0),
                 "review_scores": getattr(current_node.state, "review_scores", {}),
                 "nodeId": current_node.id,
-                "depth": current_node.state.depth
+                "depth": current_node.state.depth,
+                "feedback": get_latest_feedback(getattr(current_node.state, "feedback", {}))
             })
         
         # Return best child's data
@@ -1652,6 +1666,7 @@ def get_best_child():
             "idea": best_child.state.current_idea,
             "average_score": getattr(best_child.state, "average_score", 0.0),
             "review_scores": getattr(best_child.state, "review_scores", {}),
+            "feedback": get_latest_feedback(getattr(best_child.state, "feedback", {})),
             "nodeId": best_child.id,
             "depth": best_child.state.depth
         })
@@ -1706,6 +1721,7 @@ def select_node():
             },
             "review_scores": getattr(node.state, "review_scores", {}),
             "average_score": getattr(node.state, "average_score", 0.0),
+            "feedback": get_latest_feedback(getattr(node.state, "feedback", {})),
         }
         
         # Include review data if available
@@ -1743,6 +1759,7 @@ def get_idea():
         "idea": main_idea,
         "review_scores": getattr(current_node.state, "review_scores", {}),
         "average_score": getattr(current_node.state, "average_score", 0.0),
+        "feedback": get_latest_feedback(getattr(current_node.state, "feedback", {})),
     })
 
 
@@ -1931,6 +1948,7 @@ def improve_idea():
             "improved_idea": improved_idea,
             "review_scores": getattr(current_node.state, "review_scores", {}),
             "average_score": getattr(current_node.state, "average_score", 0.0),
+            "feedback": get_latest_feedback(getattr(current_node.state, "feedback", {})),
         })
         
     except Exception as e:
@@ -2271,6 +2289,7 @@ def improve_idea_with_knowledge():
             "content_length": len(improved_idea),
             "review_scores": getattr(new_state, "review_scores", {}),
             "average_score": getattr(new_state, "average_score", 0.0),
+            "feedback": get_latest_feedback(getattr(new_state, "feedback", {})),
         })
         
     except Exception as e:
@@ -2351,6 +2370,7 @@ def refresh_idea():
             "messages": chat_messages,
             "review_scores": getattr(new_state, "review_scores", {}),
             "average_score": getattr(new_state, "average_score", 0.0),
+            "feedback": get_latest_feedback(getattr(new_state, "feedback", {})),
         })
         
     except Exception as e:

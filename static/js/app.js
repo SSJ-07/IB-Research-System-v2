@@ -330,7 +330,7 @@ function loadIdea(isInitialLoad = false) {
             // If this is an initial load or there are no highlights yet, replace content
             if (isInitialLoad || highlightState.highlights.length === 0) {
                 const formattedContent = formatMessage(structuredContent);
-                $("#main-idea").html(formattedContent);
+                $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
                 highlightState.lastContent = $("#main-idea").html();
                 $("#main-idea").show(); // Show the main idea panel
                 $("#brief-placeholder").hide(); // Hide the placeholder
@@ -431,7 +431,7 @@ function sendMessage() {
             if (data.idea) {
                 // Parse and format any JSON structure in the idea
                 const structuredIdea = parseAndFormatStructuredIdea(data.idea);
-                $("#main-idea").html(formatMessage(structuredIdea));
+                $("#main-idea").html(prependFeedbackToIdea(formatMessage(structuredIdea), data.feedback));
             }
 
             // Show research brief buttons after first response
@@ -505,7 +505,8 @@ function toggleAutoGenerate() {
                 if (data.idea) {
                     const structuredIdea = parseAndFormatStructuredIdea ? 
                         parseAndFormatStructuredIdea(data.idea) : data.idea;
-                    $("#main-idea").html(formatMessage ? formatMessage(structuredIdea) : structuredIdea);
+                    const formattedContent = formatMessage ? formatMessage(structuredIdea) : structuredIdea;
+                    $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
                     
                     if (typeof window !== 'undefined') {
                         window.main_idea = data.idea;
@@ -608,7 +609,8 @@ function toggleAutoGenerate() {
                         if (data.idea) {
                             const structuredIdea = parseAndFormatStructuredIdea ? 
                                 parseAndFormatStructuredIdea(data.idea) : data.idea;
-                            $("#main-idea").html(formatMessage ? formatMessage(structuredIdea) : structuredIdea);
+                            const formattedContent = formatMessage ? formatMessage(structuredIdea) : structuredIdea;
+                            $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
                             
                             if (typeof window !== 'undefined') {
                                 window.main_idea = data.idea;
@@ -676,7 +678,8 @@ function toggleAutoGenerate() {
                             structuredIdea = '';
                         }
                         
-                        $("#main-idea").html(formatMessage ? formatMessage(structuredIdea) : structuredIdea);
+                        const formattedContent = formatMessage ? formatMessage(structuredIdea) : structuredIdea;
+                        $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
                         
                         // Update global variable
                         if (typeof window !== 'undefined') {
@@ -798,7 +801,8 @@ function stepAction(action) {
             if (data.idea) {
                 // Parse and format any JSON structure in the idea
                 const structuredIdea = parseAndFormatStructuredIdea(data.idea);
-                $("#main-idea").html(formatMessage(structuredIdea));
+                const formattedContent = formatMessage(structuredIdea);
+                $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
             }
 
             // Update review scores if available
@@ -1093,7 +1097,13 @@ function selectNode(d) {
                     structuredIdea = '';
                 }
                 
-                $("#main-idea").html(marked.parse(structuredIdea));
+                const formattedContent = marked.parse(structuredIdea);
+                $("#main-idea").html(prependFeedbackToIdea(formattedContent, response.feedback));
+            }
+            
+            // Update score display if score is available
+            if (response.average_score !== undefined && typeof updateScoreDisplay === 'function') {
+                updateScoreDisplay(response.average_score);
             }
             
             // Reload tree to update visualization
@@ -1180,7 +1190,8 @@ function refreshResearchIdea() {
                 } else {
                     ideaContent = '';
                 }
-                $("#main-idea").html(marked.parse(ideaContent));
+                const formattedContent = marked.parse(ideaContent);
+                $("#main-idea").html(prependFeedbackToIdea(formattedContent, response.feedback));
                 
                 console.log("Research brief updated with new content:", $("#main-idea").html().substring(0, 100) + "...");
                 
@@ -1695,7 +1706,7 @@ function improveIdeaBasedOnReviews() {
                 
                 // Update the main idea display with proper formatting
                 const formattedContent = formatMessage(improvedIdea);
-                $("#main-idea").html(formattedContent);
+                $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
 
                 // Reset review state
                 state.acceptedReviews = [];
@@ -1915,6 +1926,22 @@ function updateScoreDisplay(score) {
 // Function to update score display
 function updateScoreDisplay(score) {
     forceUpdateScoreDisplay(score);
+}
+
+// Simple helper function to prepend feedback to idea content
+function prependFeedbackToIdea(ideaContent, feedback) {
+    if (!feedback || feedback === '') {
+        return ideaContent;
+    }
+    const feedbackHeader = `<div class="feedback-header"><div class="feedback-label">Feedback:</div><div class="feedback-text">${escapeHtml(feedback)}</div></div>`;
+    return feedbackHeader + ideaContent;
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Add to the success handlers of API calls
