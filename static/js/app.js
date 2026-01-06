@@ -51,9 +51,10 @@ $(document).ready(function () {
         updateSubjectUI(subject);
     });
     
-    // Initialize physics topic selector
+    // Initialize physics topic selector - handle multiple selection
     $('#physics-topic-select').on('change', function() {
         updateSelectedTopics();
+        updateSelectedTopicsDisplay();
     });
     
     // Load saved subject on page load
@@ -341,14 +342,22 @@ function updateSubjectUI(subject) {
         : 'Enter your research goal to begin...';
     $('#chat-input').attr('placeholder', placeholder);
     
-    // Show/hide physics topic dropdown
+    // Show/hide physics topic dropdown wrapper
     if (subject === 'physics') {
-        $('#physics-topic-select').show();
-        loadPhysicsTopics();
+        if (selectedTopics.length === 0) {
+            // No topics selected yet - show dropdown so user can pick
+            $('#physics-topic-wrapper').show();
+            loadPhysicsTopics();
+        } else {
+            // Topics already selected - keep wrapper collapsed, just show summary
+            $('#physics-topic-wrapper').hide();
+        }
+        updateSelectedTopicsDisplay();
     } else {
-        $('#physics-topic-select').hide();
-        $('#physics-topic-select').val('');
+        $('#physics-topic-wrapper').hide();
+        $('#physics-topic-select').val(null);
         selectedTopics = [];
+        updateSelectedTopicsDisplay();
     }
 }
 
@@ -372,26 +381,6 @@ function updateSubjectBadge(subject) {
     updateSubjectUI(subject);
 }
 
-function updateSubjectUI(subject) {
-    // Update placeholder text based on subject
-    const placeholder = subject === 'physics' 
-        ? 'Enter your Physics research goal...'
-        : subject === 'chemistry'
-        ? 'Enter your Chemistry research goal...'
-        : 'Enter your research goal to begin...';
-    $('#chat-input').attr('placeholder', placeholder);
-    
-    // Show/hide physics topic dropdown
-    if (subject === 'physics') {
-        $('#physics-topic-select').show();
-        loadPhysicsTopics();
-    } else {
-        $('#physics-topic-select').hide();
-        $('#physics-topic-select').val('');
-        selectedTopics = [];
-    }
-}
-
 // Physics IA Functions
 let selectedTopics = [];
 
@@ -400,7 +389,6 @@ function loadPhysicsTopics() {
         const topics = data.topics || [];
         const topicSelect = $('#physics-topic-select');
         topicSelect.empty();
-        topicSelect.append('<option value="">Select Topic</option>');
         
         // Group topics by category for optgroup organization
         const topicsByCategory = {};
@@ -429,16 +417,16 @@ function loadPhysicsTopics() {
 }
 
 function updateSelectedTopics() {
-    const selectedTopicValue = $('#physics-topic-select').val();
+    const selectedTopicValues = $('#physics-topic-select').val() || [];
     selectedTopics = [];
     
-    if (selectedTopicValue) {
+    selectedTopicValues.forEach(topicValue => {
         try {
-            selectedTopics.push(JSON.parse(selectedTopicValue));
+            selectedTopics.push(JSON.parse(topicValue));
         } catch (e) {
             console.error('Error parsing topic:', e);
         }
-    }
+    });
     
     // Save selected topics
     if (selectedTopics.length > 0) {
@@ -451,6 +439,26 @@ function updateSelectedTopics() {
                 console.log('Topics saved:', data.topics);
             }
         });
+    }
+}
+
+function updateSelectedTopicsDisplay() {
+    const displayDiv = $('#selected-topics-display');
+    displayDiv.empty();
+    
+    if (selectedTopics.length > 0) {
+        const topicsText = selectedTopics.map(t => `${t.code}: ${t.name}`).join(', ');
+        displayDiv.text(`Selected: ${topicsText}`).show();
+    } else {
+        displayDiv.hide();
+    }
+}
+
+// Collapse physics topic dropdown after initial use, keeping summary visible
+function collapsePhysicsTopicsIfAny() {
+    if (selectedSubject === 'physics' && selectedTopics.length > 0) {
+        $('#physics-topic-wrapper').slideUp(150);
+        updateSelectedTopicsDisplay();
     }
 }
 
@@ -487,17 +495,26 @@ function displayIATopic(content) {
     $('#ia-topic-content').html(formatMessage(content));
     $('#ia-topic-display').show();
     $('#physics-ia-sections').show();
-    $('#generate-rq-btn').show();
 }
 
 function generateRQ() {
-    const iaTopic = $('#ia-topic-content').text();
+    // Get research brief content - try both IA topic and main idea
+    let researchContent = $('#ia-topic-content').text();
+    if (!researchContent || researchContent.trim().length === 0) {
+        // Fall back to main research brief
+        researchContent = $('#main-idea').text() || main_idea;
+    }
+    
+    if (!researchContent || researchContent.trim().length === 0) {
+        alert('Please generate a research brief first.');
+        return;
+    }
     
     $.ajax({
         url: '/api/generate_rq',
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ ia_topic: iaTopic }),
+        data: JSON.stringify({ ia_topic: researchContent }),
         success: function(data) {
             displayRQ(data.research_question, data.warnings || []);
         },
@@ -570,7 +587,8 @@ function toggleSection(section) {
 
 // Event handlers
 $(document).ready(function() {
-    $('#generate-rq-btn').on('click', generateRQ);
+    // Connect main RQ button to generateRQ
+    $('#generate-rq-btn-main').on('click', generateRQ);
     $('.expand-section-btn').on('click', function() {
         const section = $(this).data('section');
         expandSection(section);
@@ -647,6 +665,9 @@ function loadIdea(isInitialLoad = false) {
                 highlightState.lastContent = $("#main-idea").html();
                 $("#main-idea").show(); // Show the main idea panel
                 $("#brief-placeholder").hide(); // Hide the placeholder
+                
+                // Show Generate RQ button when research brief is displayed
+                showGenerateRQButton();
             }
             
             // Show review feedback if it exists (without removing highlights)
@@ -658,6 +679,15 @@ function loadIdea(isInitialLoad = false) {
             updateReview(data);
         }
     });
+}
+
+function showGenerateRQButton() {
+    // Show the Generate RQ button if research brief is visible and has content
+    if ($("#main-idea").is(":visible") && $("#main-idea").html().trim().length > 0) {
+        $("#generate-rq-container").show();
+    } else {
+        $("#generate-rq-container").hide();
+    }
 }
 
 // Update chat input placeholder and message handling
@@ -681,6 +711,7 @@ function sendMessage() {
     // Hide placeholder messages and show content areas
     $("#brief-placeholder").hide();
     $("#main-idea").show();
+    showGenerateRQButton();
 
     // Disable input while processing
     input.prop('disabled', true);
@@ -745,6 +776,8 @@ function sendMessage() {
                 // Parse and format any JSON structure in the idea
                 const structuredIdea = parseAndFormatStructuredIdea(data.idea);
                 $("#main-idea").html(prependFeedbackToIdea(formatMessage(structuredIdea), data.feedback));
+                $("#main-idea").show();
+                showGenerateRQButton();
             }
 
             // Show research brief buttons after first response
@@ -753,6 +786,9 @@ function sendMessage() {
             if (data.average_score !== undefined) {
                 updateScoreDisplay(data.average_score);
             }
+
+            // After successful idea generation, collapse physics topics if any
+            collapsePhysicsTopicsIfAny();
         },
         error: function (xhr, status, error) {
             // Remove loading indicator
@@ -924,6 +960,8 @@ function toggleAutoGenerate() {
                                 parseAndFormatStructuredIdea(data.idea) : data.idea;
                             const formattedContent = formatMessage ? formatMessage(structuredIdea) : structuredIdea;
                             $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
+                            $("#main-idea").show();
+                            showGenerateRQButton();
                             
                             if (typeof window !== 'undefined') {
                                 window.main_idea = data.idea;
@@ -1002,6 +1040,7 @@ function toggleAutoGenerate() {
                         // Make sure Research Brief is visible
                         $("#brief-placeholder").hide();
                         $("#main-idea").show();
+                        showGenerateRQButton();
                     }
                     
                     // Update score display
@@ -1412,6 +1451,8 @@ function selectNode(d) {
                 
                 const formattedContent = marked.parse(structuredIdea);
                 $("#main-idea").html(prependFeedbackToIdea(formattedContent, response.feedback));
+                $("#main-idea").show();
+                showGenerateRQButton();
             }
             
             // Update score display if score is available
@@ -1505,6 +1546,8 @@ function refreshResearchIdea() {
                 }
                 const formattedContent = marked.parse(ideaContent);
                 $("#main-idea").html(prependFeedbackToIdea(formattedContent, response.feedback));
+                $("#main-idea").show();
+                showGenerateRQButton();
                 
                 console.log("Research brief updated with new content:", $("#main-idea").html().substring(0, 100) + "...");
                 
@@ -2020,6 +2063,8 @@ function improveIdeaBasedOnReviews() {
                 // Update the main idea display with proper formatting
                 const formattedContent = formatMessage(improvedIdea);
                 $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
+                $("#main-idea").show();
+                showGenerateRQButton();
 
                 // Reset review state
                 state.acceptedReviews = [];
