@@ -652,6 +652,19 @@
                 </div>
             </div>
             <div class="chat-input">
+                <!-- Subject Selection Dropdown -->
+                <div class="subject-selector-container" style="margin-bottom: 15px;">
+                    <label for="subject-selector" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        Select Subject (Optional)
+                    </label>
+                    <select id="subject-selector" class="form-control" style="max-width: 300px;">
+                        <option value="">Select Subject</option>
+                        <option value="physics">Physics</option>
+                        <option value="chemistry">Chemistry</option>
+                    </select>
+                    <span id="subject-badge" style="display: none; margin-left: 10px; padding: 4px 12px; background: #007bff; color: white; border-radius: 12px; font-size: 0.9em;"></span>
+                </div>
+                
                 <input type="text" id="chat-input" placeholder="Enter your research goal to begin...">
                 <button onclick="sendMessage()">
                     <img src="{{ url_for('static', filename='icons/Send.svg') }}" alt="Send" width="16" height="16">

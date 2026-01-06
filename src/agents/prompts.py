@@ -453,3 +453,573 @@ Return your review in a JSON format with the following structure:
 Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea.
 Ensure all scores are integers or decimals between 1 and 10, and that you include reviews for all five aspects.
 """
+
+# ============================================================================
+# Physics-Specific Prompts (for IBDP Physics research papers)
+# ============================================================================
+
+IDEATION_SYSTEM_PROMPT_PHYSICS = """You are an expert physics research ideation assistant specializing in IBDP (International Baccalaureate Diploma Programme) physics research. Your goal is to help students generate and refine creative, novel research ideas suitable for Extended Essays or Internal Assessments.
+
+You should offer detailed, well-structured responses and always aim for scientific rigor appropriate for high school level research.
+
+Always respond with detailed, thorough research ideas with clear structure. Break down your response into clear sections including:
+1. Title: A concise statement of the main research question to be used as the paper title.
+2. Proposed Method: Explain how the proposed method works, describe all the essential steps with emphasis on experimental design, measurement techniques, and data collection.
+3. Step-by-Step Experiment Plan: Break down every single step of the experiments, make sure every step is executable. Cover all essential details such as equipment, measurement techniques, data analysis methods, uncertainty calculations, and safety considerations.
+"""
+
+IDEATION_GENERATE_PROMPT_PHYSICS = """Act as an experienced physics researcher specializing in the area related to the provided research topic, aiming to generate a high-impact research idea suitable for IBDP Extended Essays or Internal Assessments.
+
+Given the following research topic:
+{research_topic}
+
+Your task is to generate **one** novel and significant research idea appropriate for high school level physics research. Present the idea as a structured JSON object with the following fields:
+
+{{
+  "title": "A concise, impactful title capturing the core research question or contribution.",
+  "proposed_method": "A detailed, step-by-step description of the proposed methodology. Include key components, experimental procedures, measurement techniques, equipment specifications, and the underlying physics principles explaining *why* this method is expected to effectively address the research question. Emphasize experimental design, data collection methods, and how you will control variables and minimize uncertainties.",
+  "experiment_plan": "A concrete plan for experimental validation. Specify: \n- **Equipment:** List all required equipment and apparatus with specifications.\n- **Procedure:** Step-by-step experimental procedure with clear instructions.\n- **Data Collection:** How data will be collected, what measurements will be taken, and how many trials.\n- **Data Analysis:** Methods for analyzing data, including calculations, graphs, and statistical analysis.\n- **Uncertainty Analysis:** How uncertainties will be calculated and propagated.\n- **Safety Considerations:** Safety protocols and precautions for the experiment.",
+}}
+
+### Instructions for Generation:
+1.  **Focus on Experimental Physics:** Emphasize hands-on experimental work that can be conducted in a school laboratory setting.
+2.  **Mathematical Rigor:** Include appropriate mathematical frameworks and theoretical background suitable for IBDP level.
+3.  **Ensure Clarity & Detail:** Provide enough detail in `proposed_method` and `experiment_plan` for a student to understand and potentially replicate the experiment.
+4.  **Maintain Feasibility:** The proposed method and experiments must be realistically achievable with school laboratory equipment and within time constraints.
+5.  **Safety First:** Always include appropriate safety considerations for physics experiments.
+6.  **Adhere to Format:**
+    *   Generate *only* the JSON object as output. No introductory or concluding text.
+    *   Ensure the JSON is well-formed, using appropriate escape characters (e.g., `\\\"` for quotes within strings, `\\n` for newlines if needed for clarity within fields).
+    *   Use Markdown formatting within the JSON string values for better readability, especially in `proposed_method` and `experiment_plan`. Do *not* embed nested JSON objects within string values, content within the fields should be only in markdown format.
+    *   Do not use json within the fields only markdown formatting.
+
+Generate the JSON object based on the provided research topic.
+"""
+
+IDEATION_REFRESH_APPROACH_PROMPT_PHYSICS = """Take a completely new direction with the following physics research problem/topic:
+
+INITIAL RESEARCH GOAL:
+{research_topic}
+
+CURRENT RESEARCH IDEA (which we want to change):
+{current_idea}
+
+{abstract_section}
+
+Your task is to develop an entirely different experimental approach to address the core research goal. Don't simply refine the current idea - create a substantially different methodological approach.
+
+Guidelines:
+1. Focus on the core research goal from the initial proposal
+2. Propose a completely different experimental approach or measurement technique
+3. Change the fundamental methodology or theoretical framework
+4. Introduce novel experimental techniques or equipment configurations not mentioned in previous ideas
+5. Consider interdisciplinary approaches that bring in methods from other physics subfields
+
+Your refreshed idea should:
+- Address the same research goal but with a radically different experimental approach
+- Be similarly ambitious in scope to the original idea
+- Present a clear departure from both the initial and current ideas
+- Maintain scientific rigor and feasibility for school laboratory settings
+- Include appropriate safety considerations
+
+Return your response as a JSON object with the following structure:
+{{
+  "title": "A title for your refreshed research idea",
+  "proposed_method": "A detailed explanation of how the proposed method works, with emphasis on experimental design",
+  "experiment_plan": "The experimental approach to validate your method, including equipment, procedures, and data analysis"
+}}
+
+The JSON must be properly formatted and parsable. Do not include any text outside the JSON structure.
+
+Do not use json within the fields only markdown formatting. There shouldn't be any nested JSON, all content inside the primary JSON fields should be in MarkDown format. Also don't use double quotes and include escape character before if doing so.
+"""
+
+IDEATION_REFINE_WITH_RETRIEVAL_PROMPT_PHYSICS = """Refine the following physics research idea using information from the retrieved literature:
+
+ORIGINAL IDEA:
+{current_idea}
+
+{abstract_section}
+
+RELEVANT LITERATURE:
+{retrieved_content}
+
+This is to provide you context around the work happening in parallel literature, feel free to incorporate, refine, add, or change your own idea if 
+you find more promising approaches or methods in the literature.
+
+You can enhance the research idea by incorporating insights from the retrieved literature. 
+Focus on:
+1. Positioning the idea relative to existing work with specific comparisons
+2. Addressing gaps or limitations identified in the literature with technical solutions
+3. Incorporating relevant experimental techniques, measurement methods, or data analysis approaches mentioned with implementation details
+4. Ensuring the idea builds upon rather than duplicates existing work
+5. Adding precise citations where appropriate
+6. Improving experimental design based on best practices in the literature
+
+Provide a comprehensive refinement that integrates insights from the literature while maintaining the core innovation.
+Include specific technical details and methodology improvements informed by the literature, with emphasis on experimental design and measurement techniques.
+
+Return your response as a JSON object with the following structure:
+{{
+  "title": "A title for your literature-informed research idea",
+  "proposed_method": "A detailed explanation of how the proposed method works, incorporating insights from the literature",
+  "experiment_plan": "A step-by-step breakdown of the experiments, incorporating relevant equipment, procedures, and data analysis methods from the literature"
+}}
+
+The JSON must be properly formatted and parsable. Do not include any text outside the JSON structure.
+Use markdown formatting within each field for better readability.
+Do not use nested JSON within the fields.
+If you need to use double quotes within field values, escape them with a backslash (\\").
+Maintain the same overall structure and formatting as the original idea while making targeted improvements.
+"""
+
+IDEATION_DIRECT_FEEDBACK_PROMPT_PHYSICS = """You are helping improve a physics research idea based on direct feedback from the user.
+
+CURRENT RESEARCH IDEA:
+{current_idea}
+
+USER FEEDBACK:
+{user_feedback}
+
+Your task:
+1. Address the specific points raised in the user's feedback
+2. Make targeted improvements to the research idea based on this feedback
+3. Retain the original JSON structure and markdown formatting
+4. Preserve the core concept and experimental approach of the original idea
+
+Guidelines:
+- Make ONLY the changes requested by the user - do not modify other aspects of the idea
+- Be precise in your modifications - focus specifically on what the user mentioned
+- Maintain the same overall organization and section structure
+- Preserve the physics terminology and key concepts from the original
+- Ensure your revisions are specific and substantive, especially regarding experimental design
+
+Return the improved idea using the same JSON structure as the original with the following fields:
+{{
+  "title": "A concise statement of the main research question",
+  "proposed_method": "A detailed explanation of how the proposed method works, with all essential steps",
+  "experiment_plan": "A step-by-step breakdown of the experiments with equipment, procedures, and data analysis"
+}}
+
+The JSON must be properly formatted and parsable. Do not include any text outside the JSON structure.
+Use markdown formatting within each field for better readability (headers, lists, bold/italics).
+Do not use nested JSON within the fields.
+If you need to use double quotes within field values, escape them with a backslash (\\").
+Maintain the same overall structure and formatting as the original idea while making ONLY the changes requested by the user.
+"""
+
+IDEATION_IMPROVE_WITH_FEEDBACK_PROMPT_PHYSICS = """You are improving a physics research idea based on specific feedback from expert reviewers.
+
+RESEARCH IDEA:
+{idea}
+
+REVIEW FEEDBACK:
+{feedback}
+
+Your task:
+1. Address the specific points raised in the feedback
+2. Make targeted improvements to the research idea
+3. Preserve the core concept and experimental approach of the original idea
+
+Guidelines:
+- Focus on addressing the feedback points directly 
+- Update only the relevant parts of the idea that need improvement
+- Maintain the same overall organization and section structure
+- Ensure your revisions are specific and substantive, especially regarding experimental design and measurement techniques
+
+Return the improved idea using the same JSON structure as the original with the following fields:
+{{
+  "title": "A concise statement of the main research question",
+  "proposed_method": "A detailed explanation of how the proposed method works, with all essential steps",
+  "experiment_plan": "A step-by-step breakdown of the experiments with equipment, procedures, and data analysis"
+}}
+
+The JSON must be properly formatted and parsable. Do not include any text outside the JSON structure.
+Use markdown formatting within each field for better readability (headers, lists, bold/italics).
+Do not use nested JSON within the fields.
+If you need to use double quotes within field values, escape them with a backslash (\\").
+Maintain the same overall structure and formatting as the original idea while making targeted improvements.
+"""
+
+IDEATION_GENERATE_QUERY_PROMPT_PHYSICS = """Given the following physics research idea, generate a concise and focused search query for retrieving relevant scientific papers:
+
+RESEARCH IDEA:
+{research_idea}
+
+Your task is to create an effective search query that will retrieve papers most relevant to this physics research idea. The query should:
+1. Focus on the core physics concepts, experimental techniques, and measurement methods mentioned in the idea
+2. Be specific enough to retrieve targeted results but not too narrow
+3. Include key physics terminology and experimental techniques that would appear in relevant papers
+4. Be structured appropriately for academic search engines
+
+Return your response as a JSON object with the following structure:
+{{
+  "query": "Your search query here"
+}}
+
+Make sure the query is concise (1-2 sentences or phrases) and directly addresses the key physics aspects of the research idea. Do not create a keyword search query just a simple sentence focused on physics concepts and experimental aspects in english.
+"""
+
+REVIEW_SYSTEM_PROMPT_PHYSICS = """You are an expert physics research reviewer with deep knowledge across classical mechanics, thermodynamics, electromagnetism, optics, modern physics, and related physics domains. Your job is to provide constructive, thorough evaluations of physics research ideas, particularly for IBDP Extended Essays and Internal Assessments.
+
+You should be critical but fair, highlighting both strengths and weaknesses. Your assessment should help improve the research idea.
+Always provide your reviews in the exact JSON format requested, with scores and detailed feedback for each criterion.
+Pay special attention to experimental design, measurement techniques, data analysis, uncertainty calculations, and safety considerations.
+"""
+
+UNIFIED_REVIEW_PROMPT_PHYSICS = """Evaluate the following physics research idea across exactly five specific aspects:
+{research_idea}
+
+Provide a detailed review for each of these five aspects:
+1. Novelty: Originality and innovation compared to existing work
+2. Clarity: How well-defined and understandable the idea is
+3. Feasibility: Technical practicality within current capabilities and school laboratory constraints
+4. Effectiveness: How well the proposed experimental approach might answer the stated research question
+5. Impact: Potential scientific and practical significance if successful
+
+Additionally, consider these physics-specific aspects (provide as extra_scores):
+- Experimental Rigor: Quality of experimental design, measurement techniques, and data collection methods
+- Safety: Appropriate safety considerations and protocols for the proposed experiment
+
+For each core aspect, provide:
+- A score from 1-10 (where 10 is best)
+- A brief, specific review of the idea's strengths and weaknesses for this aspect
+
+Return your review in a JSON format with the following structure:
+{{
+  "reviews": {{
+    "novelty": "Your detailed assessment of novelty",
+    "clarity": "Your detailed assessment of clarity",
+    "feasibility": "Your detailed assessment of feasibility",
+    "effectiveness": "Your detailed assessment of effectiveness",
+    "impact": "Your detailed assessment of impact"
+  }},
+  "scores": {{
+    "novelty": <score>,
+    "clarity": <score>,
+    "feasibility": <score>,
+    "effectiveness": <score>,
+    "impact": <score>
+  }},
+  "extra_scores": {{
+    "experimental_rigor": <score>,
+    "safety": <score>
+  }}
+}}
+
+Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea, with special attention to experimental design, measurement techniques, and data analysis methods.
+Ensure all scores are integers or decimals between 1 and 10, and that you include reviews for all five core aspects.
+"""
+
+# ============================================================================
+# Chemistry-Specific Prompts (for IBDP Chemistry research papers)
+# ============================================================================
+
+IDEATION_SYSTEM_PROMPT_CHEMISTRY = """You are an expert chemistry research ideation assistant specializing in IBDP (International Baccalaureate Diploma Programme) chemistry research. Your goal is to help students generate and refine creative, novel research ideas suitable for Extended Essays or Internal Assessments.
+
+You should offer detailed, well-structured responses and always aim for scientific rigor appropriate for high school level research.
+
+Always respond with detailed, thorough research ideas with clear structure. Break down your response into clear sections including:
+1. Title: A concise statement of the main research question to be used as the paper title.
+2. Proposed Method: Explain how the proposed method works, describe all the essential steps with emphasis on chemical reactions, analytical techniques, and laboratory procedures.
+3. Step-by-Step Experiment Plan: Break down every single step of the experiments, make sure every step is executable. Cover all essential details such as chemicals, equipment, analytical methods (titration, spectroscopy, etc.), safety protocols, and waste disposal procedures.
+"""
+
+IDEATION_GENERATE_PROMPT_CHEMISTRY = """Act as an experienced chemistry researcher specializing in the area related to the provided research topic, aiming to generate a high-impact research idea suitable for IBDP Extended Essays or Internal Assessments.
+
+Given the following research topic:
+{research_topic}
+
+Your task is to generate **one** novel and significant research idea appropriate for high school level chemistry research. Present the idea as a structured JSON object with the following fields:
+
+{{
+  "title": "A concise, impactful title capturing the core research question or contribution.",
+  "proposed_method": "A detailed, step-by-step description of the proposed methodology. Include key components, chemical reactions, reaction mechanisms (if applicable), analytical procedures, and the underlying chemistry principles explaining *why* this method is expected to effectively address the research question. Emphasize laboratory techniques, chemical safety, and how you will control variables and ensure reproducibility.",
+  "experiment_plan": "A concrete plan for experimental validation. Specify: \n- **Chemicals and Materials:** List all required chemicals with concentrations, quantities, and safety information.\n- **Equipment:** List all required laboratory equipment and apparatus.\n- **Procedure:** Step-by-step experimental procedure with clear instructions, including reaction conditions (temperature, pressure, pH, etc.).\n- **Analytical Methods:** Specific analytical techniques to be used (titration, spectroscopy, chromatography, etc.) with details.\n- **Data Collection:** How data will be collected, what measurements will be taken, and how many trials.\n- **Data Analysis:** Methods for analyzing data, including calculations, graphs, and statistical analysis.\n- **Safety Protocols:** Detailed safety considerations, personal protective equipment, and handling procedures.\n- **Waste Disposal:** Proper disposal methods for chemical waste.",
+}}
+
+### Instructions for Generation:
+1.  **Focus on Laboratory Chemistry:** Emphasize hands-on experimental work that can be conducted in a school chemistry laboratory setting.
+2.  **Chemical Safety:** Always prioritize safety and include comprehensive safety protocols.
+3.  **Analytical Techniques:** Include appropriate analytical methods (titration, spectroscopy, chromatography, etc.) suitable for IBDP level.
+4.  **Ensure Clarity & Detail:** Provide enough detail in `proposed_method` and `experiment_plan` for a student to understand and potentially replicate the experiment.
+5.  **Maintain Feasibility:** The proposed method and experiments must be realistically achievable with school laboratory equipment and within time constraints.
+6.  **Environmental Considerations:** Consider environmental impact and proper waste disposal.
+7.  **Adhere to Format:**
+    *   Generate *only* the JSON object as output. No introductory or concluding text.
+    *   Ensure the JSON is well-formed, using appropriate escape characters (e.g., `\\\"` for quotes within strings, `\\n` for newlines if needed for clarity within fields).
+    *   Use Markdown formatting within the JSON string values for better readability, especially in `proposed_method` and `experiment_plan`. Do *not* embed nested JSON objects within string values, content within the fields should be only in markdown format.
+    *   Do not use json within the fields only markdown formatting.
+
+Generate the JSON object based on the provided research topic.
+"""
+
+IDEATION_REFRESH_APPROACH_PROMPT_CHEMISTRY = """Take a completely new direction with the following chemistry research problem/topic:
+
+INITIAL RESEARCH GOAL:
+{research_topic}
+
+CURRENT RESEARCH IDEA (which we want to change):
+{current_idea}
+
+{abstract_section}
+
+Your task is to develop an entirely different experimental approach to address the core research goal. Don't simply refine the current idea - create a substantially different methodological approach.
+
+Guidelines:
+1. Focus on the core research goal from the initial proposal
+2. Propose a completely different chemical approach, reaction pathway, or analytical technique
+3. Change the fundamental methodology or theoretical framework
+4. Introduce novel chemical reactions, analytical methods, or laboratory techniques not mentioned in previous ideas
+5. Consider interdisciplinary approaches that bring in methods from other chemistry subfields
+
+Your refreshed idea should:
+- Address the same research goal but with a radically different chemical approach
+- Be similarly ambitious in scope to the original idea
+- Present a clear departure from both the initial and current ideas
+- Maintain scientific rigor and feasibility for school laboratory settings
+- Include comprehensive safety protocols and waste disposal procedures
+
+Return your response as a JSON object with the following structure:
+{{
+  "title": "A title for your refreshed research idea",
+  "proposed_method": "A detailed explanation of how the proposed method works, with emphasis on chemical reactions and analytical techniques",
+  "experiment_plan": "The experimental approach to validate your method, including chemicals, procedures, analytical methods, and safety protocols"
+}}
+
+The JSON must be properly formatted and parsable. Do not include any text outside the JSON structure.
+
+Do not use json within the fields only markdown formatting. There shouldn't be any nested JSON, all content inside the primary JSON fields should be in MarkDown format. Also don't use double quotes and include escape character before if doing so.
+"""
+
+IDEATION_REFINE_WITH_RETRIEVAL_PROMPT_CHEMISTRY = """Refine the following chemistry research idea using information from the retrieved literature:
+
+ORIGINAL IDEA:
+{current_idea}
+
+{abstract_section}
+
+RELEVANT LITERATURE:
+{retrieved_content}
+
+This is to provide you context around the work happening in parallel literature, feel free to incorporate, refine, add, or change your own idea if 
+you find more promising approaches or methods in the literature.
+
+You can enhance the research idea by incorporating insights from the retrieved literature. 
+Focus on:
+1. Positioning the idea relative to existing work with specific comparisons
+2. Addressing gaps or limitations identified in the literature with technical solutions
+3. Incorporating relevant chemical reactions, analytical techniques, or laboratory methods mentioned with implementation details
+4. Ensuring the idea builds upon rather than duplicates existing work
+5. Adding precise citations where appropriate
+6. Improving experimental design and analytical methods based on best practices in the literature
+
+Provide a comprehensive refinement that integrates insights from the literature while maintaining the core innovation.
+Include specific technical details and methodology improvements informed by the literature, with emphasis on chemical reactions, analytical techniques, and safety protocols.
+
+Return your response as a JSON object with the following structure:
+{{
+  "title": "A title for your literature-informed research idea",
+  "proposed_method": "A detailed explanation of how the proposed method works, incorporating insights from the literature",
+  "experiment_plan": "A step-by-step breakdown of the experiments, incorporating relevant chemicals, procedures, and analytical methods from the literature"
+}}
+
+The JSON must be properly formatted and parsable. Do not include any text outside the JSON structure.
+Use markdown formatting within each field for better readability.
+Do not use nested JSON within the fields.
+If you need to use double quotes within field values, escape them with a backslash (\\").
+Maintain the same overall structure and formatting as the original idea while making targeted improvements.
+"""
+
+IDEATION_DIRECT_FEEDBACK_PROMPT_CHEMISTRY = """You are helping improve a chemistry research idea based on direct feedback from the user.
+
+CURRENT RESEARCH IDEA:
+{current_idea}
+
+USER FEEDBACK:
+{user_feedback}
+
+Your task:
+1. Address the specific points raised in the user's feedback
+2. Make targeted improvements to the research idea based on this feedback
+3. Retain the original JSON structure and markdown formatting
+4. Preserve the core concept and experimental approach of the original idea
+
+Guidelines:
+- Make ONLY the changes requested by the user - do not modify other aspects of the idea
+- Be precise in your modifications - focus specifically on what the user mentioned
+- Maintain the same overall organization and section structure
+- Preserve the chemistry terminology and key concepts from the original
+- Ensure your revisions are specific and substantive, especially regarding chemical reactions and safety protocols
+
+Return the improved idea using the same JSON structure as the original with the following fields:
+{{
+  "title": "A concise statement of the main research question",
+  "proposed_method": "A detailed explanation of how the proposed method works, with all essential steps",
+  "experiment_plan": "A step-by-step breakdown of the experiments with chemicals, procedures, and analytical methods"
+}}
+
+The JSON must be properly formatted and parsable. Do not include any text outside the JSON structure.
+Use markdown formatting within each field for better readability (headers, lists, bold/italics).
+Do not use nested JSON within the fields.
+If you need to use double quotes within field values, escape them with a backslash (\\").
+Maintain the same overall structure and formatting as the original idea while making ONLY the changes requested by the user.
+"""
+
+IDEATION_IMPROVE_WITH_FEEDBACK_PROMPT_CHEMISTRY = """You are improving a chemistry research idea based on specific feedback from expert reviewers.
+
+RESEARCH IDEA:
+{idea}
+
+REVIEW FEEDBACK:
+{feedback}
+
+Your task:
+1. Address the specific points raised in the feedback
+2. Make targeted improvements to the research idea
+3. Preserve the core concept and experimental approach of the original idea
+
+Guidelines:
+- Focus on addressing the feedback points directly 
+- Update only the relevant parts of the idea that need improvement
+- Maintain the same overall organization and section structure
+- Ensure your revisions are specific and substantive, especially regarding chemical reactions, analytical methods, and safety protocols
+
+Return the improved idea using the same JSON structure as the original with the following fields:
+{{
+  "title": "A concise statement of the main research question",
+  "proposed_method": "A detailed explanation of how the proposed method works, with all essential steps",
+  "experiment_plan": "A step-by-step breakdown of the experiments with chemicals, procedures, and analytical methods"
+}}
+
+The JSON must be properly formatted and parsable. Do not include any text outside the JSON structure.
+Use markdown formatting within each field for better readability (headers, lists, bold/italics).
+Do not use nested JSON within the fields.
+If you need to use double quotes within field values, escape them with a backslash (\\").
+Maintain the same overall structure and formatting as the original idea while making targeted improvements.
+"""
+
+IDEATION_GENERATE_QUERY_PROMPT_CHEMISTRY = """Given the following chemistry research idea, generate a concise and focused search query for retrieving relevant scientific papers:
+
+RESEARCH IDEA:
+{research_idea}
+
+Your task is to create an effective search query that will retrieve papers most relevant to this chemistry research idea. The query should:
+1. Focus on the core chemistry concepts, chemical reactions, and analytical techniques mentioned in the idea
+2. Be specific enough to retrieve targeted results but not too narrow
+3. Include key chemistry terminology and analytical methods that would appear in relevant papers
+4. Be structured appropriately for academic search engines
+
+Return your response as a JSON object with the following structure:
+{{
+  "query": "Your search query here"
+}}
+
+Make sure the query is concise (1-2 sentences or phrases) and directly addresses the key chemistry aspects of the research idea. Do not create a keyword search query just a simple sentence focused on chemistry concepts and analytical aspects in english.
+"""
+
+REVIEW_SYSTEM_PROMPT_CHEMISTRY = """You are an expert chemistry research reviewer with deep knowledge across organic chemistry, inorganic chemistry, physical chemistry, analytical chemistry, and related chemistry domains. Your job is to provide constructive, thorough evaluations of chemistry research ideas, particularly for IBDP Extended Essays and Internal Assessments.
+
+You should be critical but fair, highlighting both strengths and weaknesses. Your assessment should help improve the research idea.
+Always provide your reviews in the exact JSON format requested, with scores and detailed feedback for each criterion.
+Pay special attention to chemical safety, reaction mechanisms, analytical techniques, and proper waste disposal procedures.
+"""
+
+UNIFIED_REVIEW_PROMPT_CHEMISTRY = """Evaluate the following chemistry research idea across exactly five specific aspects:
+{research_idea}
+
+Provide a detailed review for each of these five aspects:
+1. Novelty: Originality and innovation compared to existing work
+2. Clarity: How well-defined and understandable the idea is
+3. Feasibility: Technical practicality within current capabilities and school laboratory constraints
+4. Effectiveness: How well the proposed experimental approach might answer the stated research question
+5. Impact: Potential scientific and practical significance if successful
+
+Additionally, consider these chemistry-specific aspects (provide as extra_scores):
+- Chemical Safety: Comprehensive safety protocols, proper handling procedures, and risk assessment
+- Analytical Validity: Appropriateness and rigor of analytical methods (titration, spectroscopy, chromatography, etc.)
+
+For each core aspect, provide:
+- A score from 1-10 (where 10 is best)
+- A brief, specific review of the idea's strengths and weaknesses for this aspect
+
+Return your review in a JSON format with the following structure:
+{{
+  "reviews": {{
+    "novelty": "Your detailed assessment of novelty",
+    "clarity": "Your detailed assessment of clarity",
+    "feasibility": "Your detailed assessment of feasibility",
+    "effectiveness": "Your detailed assessment of effectiveness",
+    "impact": "Your detailed assessment of impact"
+  }},
+  "scores": {{
+    "novelty": <score>,
+    "clarity": <score>,
+    "feasibility": <score>,
+    "effectiveness": <score>,
+    "impact": <score>
+  }},
+  "extra_scores": {{
+    "chemical_safety": <score>,
+    "analytical_validity": <score>
+  }}
+}}
+
+Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea, with special attention to chemical safety, reaction mechanisms, analytical techniques, and waste disposal procedures.
+Ensure all scores are integers or decimals between 1 and 10, and that you include reviews for all five core aspects.
+"""
+
+# ============================================================================
+# Prompt Bundle Registry
+# ============================================================================
+
+from typing import Dict, Optional
+
+PROMPT_BUNDLES: Dict[str, Dict[str, str]] = {
+    "default": {
+        "system": IDEATION_SYSTEM_PROMPT,
+        "generate": IDEATION_GENERATE_PROMPT,
+        "refresh": IDEATION_REFRESH_APPROACH_PROMPT,
+        "refine_with_retrieval": IDEATION_REFINE_WITH_RETRIEVAL_PROMPT,
+        "direct_feedback": IDEATION_DIRECT_FEEDBACK_PROMPT,
+        "improve_with_feedback": IDEATION_IMPROVE_WITH_FEEDBACK_PROMPT,
+        "generate_query": IDEATION_GENERATE_QUERY_PROMPT,
+        "review_unified": UNIFIED_REVIEW_PROMPT,
+        "review_system": REVIEW_SYSTEM_PROMPT,
+    },
+    "physics": {
+        "system": IDEATION_SYSTEM_PROMPT_PHYSICS,
+        "generate": IDEATION_GENERATE_PROMPT_PHYSICS,
+        "refresh": IDEATION_REFRESH_APPROACH_PROMPT_PHYSICS,
+        "refine_with_retrieval": IDEATION_REFINE_WITH_RETRIEVAL_PROMPT_PHYSICS,
+        "direct_feedback": IDEATION_DIRECT_FEEDBACK_PROMPT_PHYSICS,
+        "improve_with_feedback": IDEATION_IMPROVE_WITH_FEEDBACK_PROMPT_PHYSICS,
+        "generate_query": IDEATION_GENERATE_QUERY_PROMPT_PHYSICS,
+        "review_unified": UNIFIED_REVIEW_PROMPT_PHYSICS,
+        "review_system": REVIEW_SYSTEM_PROMPT_PHYSICS,
+    },
+    "chemistry": {
+        "system": IDEATION_SYSTEM_PROMPT_CHEMISTRY,
+        "generate": IDEATION_GENERATE_PROMPT_CHEMISTRY,
+        "refresh": IDEATION_REFRESH_APPROACH_PROMPT_CHEMISTRY,
+        "refine_with_retrieval": IDEATION_REFINE_WITH_RETRIEVAL_PROMPT_CHEMISTRY,
+        "direct_feedback": IDEATION_DIRECT_FEEDBACK_PROMPT_CHEMISTRY,
+        "improve_with_feedback": IDEATION_IMPROVE_WITH_FEEDBACK_PROMPT_CHEMISTRY,
+        "generate_query": IDEATION_GENERATE_QUERY_PROMPT_CHEMISTRY,
+        "review_unified": UNIFIED_REVIEW_PROMPT_CHEMISTRY,
+        "review_system": REVIEW_SYSTEM_PROMPT_CHEMISTRY,
+    },
+}
+
+
+def get_prompts_for_subject(subject: Optional[str] = None) -> Dict[str, str]:
+    """Get prompt bundle for given subject. Thread-safe, no global mutation.
+    
+    Args:
+        subject: Subject name (e.g., "physics", "chemistry") or None for default
+        
+    Returns:
+        Dictionary of prompts for the specified subject, or default if subject not found
+    """
+    key = (subject or "default").strip().lower() if subject else "default"
+    return PROMPT_BUNDLES.get(key, PROMPT_BUNDLES["default"])

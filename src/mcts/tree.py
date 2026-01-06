@@ -234,12 +234,17 @@ class MCTS:
             # Add abstract to state_dict if available
             if hasattr(state, "abstract") and state.abstract:
                 state_dict["abstract"] = state.abstract
+            
+            # Add subject to state_dict if available
+            if hasattr(state, "subject") and state.subject:
+                state_dict["subject"] = state.subject
 
             # Delegate action execution to ideation agent
             response = self.ideation_agent.execute_action(action, state_dict)
 
             # Get review from review agent using unified review (all aspects in one call)
-            review_data = self.review_agent.unified_review(response["content"])
+            subject = getattr(state, "subject", None)
+            review_data = self.review_agent.unified_review(response["content"], subject=subject)
 
             reward = review_data["average_score"]
 
@@ -248,7 +253,8 @@ class MCTS:
                 research_goal=state.research_goal if hasattr(state, "research_goal") else None,
                 current_idea=response["content"], 
                 depth=state.depth + 1, 
-                reward=reward
+                reward=reward,
+                subject=subject
             )
 
             # Copy memory state from parent
@@ -364,6 +370,7 @@ class MCTS:
             depth=old_state.depth + 1,
             reward=0.0,
             retrieved_knowledge=getattr(old_state, 'retrieved_knowledge', []),
+            subject=getattr(old_state, 'subject', None),
             feedback=getattr(old_state, 'feedback', {})
         )
         
@@ -415,7 +422,8 @@ class MCTS:
     def _execute_simple_refinement(self, state: MCTSState) -> MCTSState:
         """Fallback refinement when action execution fails."""
         new_state = MCTSState(
-            current_idea=state.current_idea, depth=state.depth + 1, reward=0.5
+            current_idea=state.current_idea, depth=state.depth + 1, reward=0.5,
+            subject=getattr(state, 'subject', None)
         )
         return new_state
 
@@ -579,7 +587,8 @@ class MCTS:
     def _execute_simple_refinement(self, state: MCTSState) -> MCTSState:
         """Fallback refinement when review fails."""
         new_state = MCTSState(
-            current_idea=state.current_idea, depth=state.depth + 1, reward=0.5
+            current_idea=state.current_idea, depth=state.depth + 1, reward=0.5,
+            subject=getattr(state, 'subject', None)
         )
         return new_state
 

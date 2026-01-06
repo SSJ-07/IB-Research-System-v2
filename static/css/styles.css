@@ -1,3 +1,49 @@
+/* Subject Selector Styles */
+.subject-selector-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.subject-selector-container label {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+#subject-selector {
+    max-width: 300px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#subject-selector:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+#subject-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    background: #007bff;
+    color: white;
+    border-radius: 12px;
+    font-size: 0.9em;
+    font-weight: 500;
+    margin-left: 10px;
+}
+
+#subject-badge:empty {
+    display: none;
+}
+
 /* Modern minimalist styling */
 body,
 html {

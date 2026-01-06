@@ -32,6 +32,9 @@ let current_root = null; // Initialize current_root
 // Define main_idea as a global variable to store the current idea
 let main_idea = "";
 
+// Store selected subject
+let selectedSubject = null;
+
 // Add this near the top of the file to ensure our function is available globally
 let toggleFromAutoGenerate; 
 
@@ -39,6 +42,17 @@ $(document).ready(function () {
     loadKnowledge();
     loadChat();
     loadIdea(true); // Initial load, don't overwrite highlights
+    
+    // Load subject selection
+    loadSubject();
+    
+    // Setup subject selector change handler
+    $('#subject-selector').on('change', function() {
+        const subject = $(this).val();
+        selectedSubject = subject || null;
+        updateSubjectBadge(subject);
+        saveSubject(subject);
+    });
 
     // Polling removed - loadIdea should only be called when idea is actually updated
     // (e.g., after generation, refresh, or node selection)
@@ -296,6 +310,54 @@ function addKnowledge() {
                 loadKnowledge();
             }
         });
+    }
+}
+
+function loadSubject() {
+    $.get('/api/subject')
+        .done(function(data) {
+            if (data.subject) {
+                selectedSubject = data.subject;
+                $('#subject-selector').val(data.subject);
+                updateSubjectBadge(data.subject);
+            }
+        })
+        .fail(function() {
+            console.error('Failed to load subject');
+        });
+}
+
+function saveSubject(subject) {
+    $.ajax({
+        url: '/api/subject',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ subject: subject || null }),
+        success: function(data) {
+            console.log('Subject saved:', data.subject);
+        },
+        error: function() {
+            console.error('Failed to save subject');
+        }
+    });
+}
+
+function updateSubjectBadge(subject) {
+    const badge = $('#subject-badge');
+    if (subject) {
+        const subjectName = subject.charAt(0).toUpperCase() + subject.slice(1);
+        badge.text(subjectName).show();
+        
+        // Update placeholder text based on subject
+        const placeholder = subject === 'physics' 
+            ? 'Enter your Physics research topic...'
+            : subject === 'chemistry'
+            ? 'Enter your Chemistry research topic...'
+            : 'Enter your research goal to begin...';
+        $('#chat-input').attr('placeholder', placeholder);
+    } else {
+        badge.hide();
+        $('#chat-input').attr('placeholder', 'Enter your research goal to begin...');
     }
 }
 

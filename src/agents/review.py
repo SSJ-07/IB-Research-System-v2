@@ -7,7 +7,7 @@ from .base import BaseAgent
 import numpy as np
 import retry
 import litellm
-from .prompts import REVIEW_SYSTEM_PROMPT, REVIEW_SINGLE_ASPECT_PROMPT, UNIFIED_REVIEW_PROMPT
+from .prompts import REVIEW_SINGLE_ASPECT_PROMPT, get_prompts_for_subject
 
 logger = logging.getLogger(__name__)
 
@@ -112,13 +112,21 @@ class ReviewAgent(BaseAgent):
         }
         return descriptions.get(aspect, "")
     
-    def unified_review(self, idea: str) -> Dict[str, Any]:
-        """Review all aspects of an idea in a single call and compute the weighted average score."""
+    def unified_review(self, idea: str, subject: Optional[str] = None) -> Dict[str, Any]:
+        """Review all aspects of an idea in a single call and compute the weighted average score.
+        
+        Args:
+            idea: The research idea to review
+            subject: Optional subject for subject-specific prompts
+        """
         try:
+            # Get prompts for subject
+            prompts = get_prompts_for_subject(subject)
+            
             # Get memory context
             memory_context = self.get_memory_context()
             # Use the unified review prompt template from prompts.py
-            prompt = UNIFIED_REVIEW_PROMPT.format(research_idea=idea)
+            prompt = prompts["review_unified"].format(research_idea=idea)
 
             # Add memory context for focused review
             memory_prompt = ""
@@ -132,7 +140,7 @@ class ReviewAgent(BaseAgent):
             
             # Prepare messages for the chat
             messages = [
-                {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+                {"role": "system", "content": prompts["review_system"]},
                 {"role": "user", "content": prompt}
             ]
             

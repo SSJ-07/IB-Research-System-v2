@@ -21,7 +21,8 @@ class MCTSState:
         depth: int = 0, 
         reward: float = 0,
         retrieved_knowledge: Optional[List[Dict[str, Any]]] = None,
-        feedback: Optional[Dict[str, Any]] = None
+        feedback: Optional[Dict[str, Any]] = None,
+        subject: Optional[str] = None
     ):
         self.research_goal = research_goal
         self.current_idea = current_idea or ""
@@ -32,6 +33,7 @@ class MCTSState:
         self.average_score = 0.0  # Average score across all criteria
         self.retrieved_knowledge = retrieved_knowledge or []  # Knowledge retrieved for this state
         self.feedback = feedback or {}  # General feedback for this state
+        self.subject = subject  # Subject selection (Physics, Chemistry, etc.)
         # Add trajectory-level memory attributes
         self.last_query = None  # Track the last retrieval query
         self.problematic_aspects = []  # Track aspects that have been problematic
@@ -92,7 +94,8 @@ class MCTSState:
             "review_feedback": self.review_feedback,
             "average_score": self.average_score,
             "retrieved_knowledge": self.retrieved_knowledge,
-            "feedback": self.feedback
+            "feedback": self.feedback,
+            "subject": self.subject
         }
 
     @classmethod
@@ -104,7 +107,8 @@ class MCTSState:
             depth=data.get("depth", 0),
             reward=data.get("reward", 0),
             retrieved_knowledge=data.get("retrieved_knowledge", []),
-            feedback=data.get("feedback", {})
+            feedback=data.get("feedback", {}),
+            subject=data.get("subject")
         )
         # Load additional review data if available
         if "review_scores" in data:

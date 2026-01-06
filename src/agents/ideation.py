@@ -10,13 +10,7 @@ import os
 # from google import genai
 from .base import BaseAgent
 from .prompts import (
-    IDEATION_SYSTEM_PROMPT,
-    IDEATION_GENERATE_PROMPT,
-    IDEATION_REFRESH_APPROACH_PROMPT,
-    IDEATION_REFINE_WITH_RETRIEVAL_PROMPT,
-    IDEATION_GENERATE_QUERY_PROMPT,
-    IDEATION_IMPROVE_WITH_FEEDBACK_PROMPT,
-    IDEATION_DIRECT_FEEDBACK_PROMPT,
+    get_prompts_for_subject,
 )
 import litellm
 
@@ -93,9 +87,13 @@ class IdeationAgent(BaseAgent):
                 state['memory_context'] = memory_context
             
             prompt = self._get_action_prompt(action, state)
+            
+            # Get subject from state for prompt bundle selection
+            subject = state.get("subject") or (getattr(state.get("current_state"), "subject", None) if state.get("current_state") else None)
+            prompts = get_prompts_for_subject(subject)
 
             messages = [
-                {"role": "system", "content": IDEATION_SYSTEM_PROMPT},
+                {"role": "system", "content": prompts["system"]},
                 {"role": "user", "content": prompt},
             ]
             # if action != "generate_query":
@@ -384,11 +382,15 @@ class IdeationAgent(BaseAgent):
         research_goal = state.get("research_goal", "")  # Get research_goal directly
         current_idea = state.get("current_idea", "")
         abstract = state.get("abstract", "")
+        
+        # Get subject from state for prompt bundle selection
+        subject = state.get("subject") or (getattr(state.get("current_state"), "subject", None) if state.get("current_state") else None)
+        prompts = get_prompts_for_subject(subject)
 
         if action == "generate":
             # Add memory context to avoid redundancy
             memory_context = self.get_memory_context()
-            prompt = IDEATION_GENERATE_PROMPT.format(research_topic=research_goal or current_idea, abstract_section=abstract)
+            prompt = prompts["generate"].format(research_topic=research_goal or current_idea, abstract_section=abstract)
             if memory_context:
                 prompt += f"\n\nMemory context (avoid these approaches):\n{memory_context}"
             return prompt
@@ -401,14 +403,14 @@ class IdeationAgent(BaseAgent):
                 last_query = memory_context.get('last_query')
                 if last_query:
                     memory_prompt = f"\n\nPrevious query: {last_query}\nGenerate a different query focusing on other aspects."
-            return IDEATION_GENERATE_QUERY_PROMPT.format(research_idea=current_idea) + memory_prompt
+            return prompts["generate_query"].format(research_idea=current_idea) + memory_prompt
         elif action == "refresh_idea":
             # Add memory context to ensure fresh approach
             memory_context = self.get_memory_context()
             memory_prompt = ""
             if memory_context:
                 memory_prompt = f"\n\n{memory_context}\n\nGenerate a completely different approach that avoids the above patterns."
-            return IDEATION_REFRESH_APPROACH_PROMPT.format(
+            return prompts["refresh"].format(
                 research_topic=research_goal,
                 current_idea=current_idea,
                 abstract_section=abstract
@@ -464,7 +466,7 @@ class IdeationAgent(BaseAgent):
         Return the complete improved idea in the same format as the original.""" + memory_prompt
             else:
                 # Use the standard prompt template for formatted ideas
-                return IDEATION_IMPROVE_WITH_FEEDBACK_PROMPT.format(
+                return prompts["improve_with_feedback"].format(
                     idea=idea_to_improve,
                     feedback=formatted_feedback
                 ) + memory_prompt
@@ -483,13 +485,13 @@ class IdeationAgent(BaseAgent):
                 # Direct content from API endpoint
                 retrieved_content = state.get("retrieved_content", "")
                             
-            return IDEATION_REFINE_WITH_RETRIEVAL_PROMPT.format(
+            return prompts["refine_with_retrieval"].format(
                 current_idea=current_idea, retrieved_content=retrieved_content, abstract_section=abstract
             ) + memory_prompt
         elif action == "process_feedback":
             # Handle user feedback from chat
             user_feedback = state.get("user_feedback", "")
-            return IDEATION_DIRECT_FEEDBACK_PROMPT.format(
+            return prompts["direct_feedback"].format(
                 current_idea=current_idea, user_feedback=user_feedback
             )
         else:
@@ -513,7 +515,7 @@ class IdeationAgent(BaseAgent):
         """Select and format context chunks."""
         # Implementation moved from tree.py
 
-    def improve_idea(self, idea: str, accepted_reviews: List[Dict[str, Any]], original_raw_output: Optional[str] = None) -> Tuple[str, str]:
+    def improve_idea(self, idea: str, accepted_reviews: List[Dict[str, Any]], original_raw_output: Optional[str] = None, subject: Optional[str] = None) -> Tuple[str, str]:
         """Improve a research idea based on accepted review feedback.
         
         Args:
@@ -561,15 +563,17 @@ Please improve the research idea based on the specific feedback provided. Make t
 Return the complete improved idea in the same format as the original."""
             else:
                 # Use the standard prompt template for formatted ideas
-                # print(f"Improving idea: {idea_to_improve}")
-                user_prompt = IDEATION_IMPROVE_WITH_FEEDBACK_PROMPT.format(
+                # Get prompts for subject
+                prompts = get_prompts_for_subject(subject)
+                user_prompt = prompts["improve_with_feedback"].format(
                     idea=idea_to_improve,
                     feedback=formatted_feedback
                 )
             
             # Call the language model to improve the idea
+            prompts = get_prompts_for_subject(subject)
             messages = [
-                {"role": "system", "content": IDEATION_SYSTEM_PROMPT},
+                {"role": "system", "content": prompts["system"]},
                 {"role": "user", "content": user_prompt}
             ]
             
@@ -611,7 +615,7 @@ Return the complete improved idea in the same format as the original."""
             error_msg = f"<p>Unable to improve idea: {str(e)}.</p>"
             return f"{error_msg}<p>{idea}</p>", original_raw_output or idea
 
-    def refresh_idea(self, idea: str, original_raw_output: Optional[str] = None) -> Tuple[str, str]:
+    def refresh_idea(self, idea: str, original_raw_output: Optional[str] = None, subject: Optional[str] = None) -> Tuple[str, str]:
         """Generate a completely new approach for the same research problem.
         
         Args:
@@ -625,15 +629,18 @@ Return the complete improved idea in the same format as the original."""
             # Determine which version of the idea to use as input
             idea_to_refresh = original_raw_output if original_raw_output else idea
             
+            # Get prompts for subject
+            prompts = get_prompts_for_subject(subject)
+            
             # Use the refresh approach prompt
-            user_prompt = IDEATION_REFRESH_APPROACH_PROMPT.format(
+            user_prompt = prompts["refresh"].format(
                 research_topic=None,
                 current_idea=idea_to_refresh
             )
             
             # Call the language model to refresh the idea
             messages = [
-                {"role": "system", "content": IDEATION_SYSTEM_PROMPT},
+                {"role": "system", "content": prompts["system"]},
                 {"role": "user", "content": user_prompt}
             ]
             
@@ -914,13 +921,14 @@ Return the complete improved idea in the same format as the original."""
         print("No query pattern found, returning truncated raw text")
         return text[:200] if text else None
 
-    def process_feedback(self, idea: str, user_feedback: str, original_raw_output: Optional[str] = None) -> Tuple[str, str]:
+    def process_feedback(self, idea: str, user_feedback: str, original_raw_output: Optional[str] = None, subject: Optional[str] = None) -> Tuple[str, str]:
         """Process direct user feedback from chat to improve a research idea.
         
         Args:
             idea: The formatted idea text (parsed/displayed version)
             user_feedback: The feedback text from the user
             original_raw_output: The original unparsed LLM output if available
+            subject: Optional subject for subject-specific prompts
             
         Returns:
             Tuple of (improved_idea_content, raw_llm_output)
@@ -929,15 +937,18 @@ Return the complete improved idea in the same format as the original."""
             # Determine which version of the idea to use
             idea_to_improve = original_raw_output if original_raw_output else idea
             
+            # Get prompts for subject
+            prompts = get_prompts_for_subject(subject)
+            
             # Use the direct feedback prompt
-            user_prompt = IDEATION_DIRECT_FEEDBACK_PROMPT.format(
+            user_prompt = prompts["direct_feedback"].format(
                 current_idea=idea_to_improve,
                 user_feedback=user_feedback
             )
             
             # Call the language model to improve the idea based on user feedback
             messages = [
-                {"role": "system", "content": IDEATION_SYSTEM_PROMPT},
+                {"role": "system", "content": prompts["system"]},
                 {"role": "user", "content": user_prompt}
             ]
             

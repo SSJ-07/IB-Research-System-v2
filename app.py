@@ -102,6 +102,7 @@ def extract_abstract(pdf_text):
 mcts = MCTS("config/config.yaml")
 current_root = None
 current_node = None
+selected_subject = None  # Selected subject (Physics, Chemistry, etc.)
 current_state = None
 exploration_in_progress = False
 
@@ -412,9 +413,35 @@ def add_knowledge():
     return jsonify(chunk), 201
 
 
+@app.route("/api/subject", methods=["GET", "POST"])
+def subject():
+    """Get or set the selected subject."""
+    global selected_subject
+    
+    if request.method == "GET":
+        return jsonify({"subject": selected_subject})
+    
+    # POST: Set subject
+    data = request.get_json()
+    if not data or "subject" not in data:
+        return jsonify({"error": "Invalid payload"}), 400
+    
+    subject_value = data.get("subject")
+    # Validate subject (allow None, "physics", "chemistry", or other valid subjects)
+    valid_subjects = [None, "physics", "chemistry", "default"]
+    if subject_value and subject_value.lower() not in [s for s in valid_subjects if s]:
+        # Allow any subject but normalize to lowercase
+        subject_value = subject_value.lower() if subject_value else None
+    else:
+        subject_value = subject_value.lower() if subject_value else None
+    
+    selected_subject = subject_value
+    return jsonify({"subject": selected_subject})
+
+
 @app.route("/api/chat", methods=["GET", "POST"])
 def chat():
-    global main_idea, current_root, current_node, current_state, exploration_in_progress
+    global main_idea, current_root, current_node, current_state, exploration_in_progress, selected_subject
     if request.method == "GET":
         return jsonify(chat_messages)
     else:
@@ -448,6 +475,7 @@ def chat():
                     feedback={},
                     reward=0.0,
                     depth=0,
+                    subject=selected_subject,
                 )
                 
                 # Create root node with the research goal
@@ -460,7 +488,8 @@ def chat():
                         "research_goal": user_message,
                         "current_idea": None,
                         "abstract": abstract_text,
-                        "action_type": "execute"
+                        "action_type": "execute",
+                        "subject": selected_subject,
                     }
                 )
                 llm_response = response["content"]
@@ -476,10 +505,11 @@ def chat():
                     feedback={},
                     reward=0.0,
                     depth=1,  # Depth 1 since it's a child of the root
+                    subject=selected_subject,
                 )
                 
                 # Get review using the unified review method
-                review_data = review_agent.unified_review(llm_response)
+                review_data = review_agent.unified_review(llm_response, subject=selected_subject)
                 print(f"Review score: {review_data['average_score']}")
                 if review_data:
                     if "scores" in review_data:
@@ -509,7 +539,8 @@ def chat():
                 improved_content, raw_output = ideation_agent.process_feedback(
                     idea=main_idea,
                     user_feedback=user_message,
-                    original_raw_output=getattr(current_node.state, "raw_llm_output", None)
+                    original_raw_output=getattr(current_node.state, "raw_llm_output", None),
+                    subject=getattr(current_node.state, "subject", None) or selected_subject
                 )
                 
                 # Get the current feedback dictionary and add the new message
@@ -520,17 +551,19 @@ def chat():
                 current_feedback[feedback_key] = user_message
                 
                 # Create a new state with updated idea based on feedback
+                subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
                 new_state = MCTSState(
                     research_goal=current_node.state.research_goal,
                     current_idea=improved_content,
                     retrieved_knowledge=current_node.state.retrieved_knowledge.copy(),
                     feedback=current_feedback,  # Pass feedback as dictionary
                     depth=current_node.state.depth + 1,
-                    reward=0.0  # Initial reward will be updated with review score
+                    reward=0.0,  # Initial reward will be updated with review score
+                    subject=subject_from_state
                 )
                 
                 # Get review using the unified review method
-                review_data = review_agent.unified_review(improved_content)
+                review_data = review_agent.unified_review(improved_content, subject=subject_from_state)
                 print(f"Review score: {review_data['average_score']}")
                 if review_data:
                     if "scores" in review_data:
@@ -646,7 +679,8 @@ def chat():
 #         # Add handler for the judge action - needed by review_and_refine
 #         elif action == "judge":
 #             # Use the review agent to get a unified review of the current idea
-#             review_data = review_agent.unified_review(current_node.state.current_idea)
+#             subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
+            review_data = review_agent.unified_review(current_node.state.current_idea, subject=subject_from_state)
             
 #             # Add the review scores to the current node's state
 #             if review_data:
@@ -680,7 +714,8 @@ def chat():
 #         # Handle regular actions with their existing implementation
 #         elif action == "review_and_refine":
 #             # First get unified review
-#             review_data = review_agent.unified_review(current_node.state.current_idea)
+#             subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
+            review_data = review_agent.unified_review(current_node.state.current_idea, subject=subject_from_state)
             
 #             # Sort aspects by score to find lowest scoring ones
 #             aspect_scores = []
@@ -975,7 +1010,8 @@ def step():
         # Add handler for the judge action - needed by review_and_refine
         elif action == "judge":
             # Use the review agent to get a unified review of the current idea
-            review_data = review_agent.unified_review(current_node.state.current_idea)
+            subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
+            review_data = review_agent.unified_review(current_node.state.current_idea, subject=subject_from_state)
             
             # Add the review scores to the current node's state
             if review_data:
@@ -1009,7 +1045,8 @@ def step():
         # Handle regular actions with their existing implementation
         elif action == "review_and_refine":
             # First get unified review
-            review_data = review_agent.unified_review(current_node.state.current_idea)
+            subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
+            review_data = review_agent.unified_review(current_node.state.current_idea, subject=subject_from_state)
             
             # Sort aspects by score to find lowest scoring ones
             aspect_scores = []
@@ -1035,7 +1072,8 @@ def step():
                 current_idea=current_node.state.current_idea,
                 retrieved_knowledge=current_node.state.retrieved_knowledge.copy(),
                 feedback=detailed_reviews,
-                depth=current_node.state.depth + 1
+                depth=current_node.state.depth + 1,
+                subject=subject_from_state
             )
             
             # Get improved idea from ideation agent
@@ -1044,7 +1082,8 @@ def step():
                 {
                     "current_idea": current_node.state.current_idea,
                     "reviews": detailed_reviews,
-                    "action_type": "execute"
+                    "action_type": "execute",
+                    "subject": subject_from_state
                 }
             )
             
@@ -1052,7 +1091,7 @@ def step():
             improvement_state.current_idea = response["content"]
             
             # Get new review scores
-            new_review = review_agent.unified_review(improvement_state.current_idea)
+            new_review = review_agent.unified_review(improvement_state.current_idea, subject=subject_from_state)
             if new_review:
                 improvement_state.review_scores = new_review.get("scores", {})
                 improvement_state.review_feedback = new_review.get("reviews", {})
@@ -1903,7 +1942,8 @@ def improve_idea():
 
     try:
         # Use ideation_agent instead of structured_review_agent
-        improved_idea = ideation_agent.improve_idea(idea, accepted_reviews)
+        subject_from_state = getattr(current_node.state, "subject", None) if current_node else selected_subject
+        improved_idea = ideation_agent.improve_idea(idea, accepted_reviews, subject=subject_from_state)
 
         # Update the main idea in our application state
         main_idea = improved_idea
@@ -1914,7 +1954,8 @@ def improve_idea():
             current_idea=improved_idea,
             retrieved_knowledge=current_node.state.retrieved_knowledge.copy(),
             feedback=current_node.state.feedback.copy(),
-            depth=current_node.state.depth + 1
+            depth=current_node.state.depth + 1,
+            subject=subject_from_state
         )
         
         # Get review using the unified review method
