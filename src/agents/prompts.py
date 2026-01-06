@@ -718,30 +718,31 @@ Ensure all scores are integers or decimals between 1 and 10, and that you includ
 # Physics IA-Specific Prompts (for IBDP Physics Internal Assessment)
 # ============================================================================
 
-IDEATION_IA_TOPIC_PROMPT_PHYSICS = """Act as an experienced physics researcher specializing in IBDP Physics Internal Assessments. Your task is to generate an overall IA topic that combines concepts from multiple selected Physics topics.
+IDEATION_IA_TOPIC_PROMPT_PHYSICS = """Act as an experienced physics researcher specializing in IBDP Physics Internal Assessments. Your task is to generate an overall IA topic that falls within the IBDP Physics syllabus.
 
-SELECTED PHYSICS TOPICS:
+PHYSICS SYLLABUS TOPICS (Full Syllabus):
 {selected_topics}
 
 RESEARCH GOAL (optional):
 {research_goal}
 
 Your task is to generate **one** coherent and feasible Physics IA topic that:
-1. Combines concepts from ALL selected topics into a unified investigation
+1. Falls within the scope of the IBDP Physics syllabus topics listed above
 2. Is appropriate for high school level experimental physics
 3. Can be conducted in a school laboratory setting
 4. Has clear experimental methodology
 5. Is novel and interesting
+6. Aligns with at least one or more topics from the syllabus
 
 The topic should be described as a comprehensive research brief that includes:
 - A clear description of the overall investigation area
-- How the selected topics relate to each other in this investigation
+- How the investigation relates to the syllabus topics
 - The general experimental approach
 - Why this topic is interesting and feasible for an IA
 
 Return your response as a structured text (not JSON) that reads like a research brief. Include:
 - **Topic Overview**: A 2-3 sentence description of the overall investigation
-- **Topic Integration**: How the selected topics connect in this investigation
+- **Syllabus Alignment**: How the investigation relates to the syllabus topics
 - **Experimental Approach**: General methodology and measurement techniques
 - **Feasibility**: Why this is suitable for a school laboratory IA
 
@@ -752,6 +753,9 @@ IDEATION_RQ_PROMPT_PHYSICS = """Act as an experienced physics researcher special
 
 IA TOPIC:
 {ia_topic}
+
+PHYSICS SYLLABUS TOPICS (Full Syllabus - RQ must fall within these topics):
+{topics}
 
 RQ FORMAT REQUIREMENTS:
 - Must clearly identify an independent variable (IV) with units
@@ -768,9 +772,10 @@ RQ TEMPLATES:
 
 Your task:
 1. Generate a hyper-specific RQ that follows IB format requirements
-2. Ensure the RQ includes IV, DV, units, and scope
-3. Make it specific enough to guide a focused experimental investigation
-4. Ensure it is measurable and feasible for school laboratory
+2. Ensure the RQ aligns with the Physics syllabus topics listed above
+3. Ensure the RQ includes IV, DV, units, and scope
+4. Make it specific enough to guide a focused experimental investigation
+5. Ensure it is measurable and feasible for school laboratory
 
 If the generated RQ does not meet all requirements, rewrite it to include:
 - Explicit independent variable with units

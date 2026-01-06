@@ -391,9 +391,12 @@ class IdeationAgent(BaseAgent):
         current_state = state.get("current_state")
         assessment_type = None
         selected_topics = []
+        # Get topics from state parameter first (passed from request), then from current_state
+        selected_topics = state.get("topics", []) or state.get("selected_topics", [])
         if current_state:
             assessment_type = getattr(current_state, "assessment_type", None)
-            selected_topics = getattr(current_state, "selected_topics", [])
+            if not selected_topics:
+                selected_topics = getattr(current_state, "selected_topics", [])
         assessment_type = assessment_type or state.get("assessment_type")
 
         if action == "generate":
@@ -415,7 +418,17 @@ class IdeationAgent(BaseAgent):
                 return prompt
         
         elif action == "generate_ia_topic":
-            topics_str = "\n".join([f"- {t.get('code', '')}: {t.get('name', '')}" for t in selected_topics])
+            # Get topics from state parameter (passed from request) or from current_state
+            topics = state.get("topics", []) or state.get("selected_topics", [])
+            if not topics and current_state:
+                topics = getattr(current_state, "selected_topics", [])
+            
+            # Format topics for the prompt
+            if topics:
+                topics_str = "\n".join([f"- {t.get('code', '')}: {t.get('name', '')}" for t in topics])
+            else:
+                topics_str = "No topics provided"
+            
             return prompts.get("generate_ia_topic", prompts["generate"]).format(
                 selected_topics=topics_str,
                 research_goal=research_goal or ""
@@ -423,7 +436,32 @@ class IdeationAgent(BaseAgent):
         
         elif action == "generate_rq":
             ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)
-            return prompts.get("generate_rq", "").format(ia_topic=ia_topic or "")
+            # Get topics from state parameter (passed from request) or from current_state
+            topics = state.get("topics", [])
+            if not topics and current_state:
+                topics = getattr(current_state, "selected_topics", [])
+            
+            # If still no topics and subject is physics, try to load from syllabus
+            if not topics:
+                subject = state.get("subject") or (getattr(current_state, "subject", None) if current_state else None)
+                if subject == "physics":
+                    try:
+                        from src.utils.ib_config import load_physics_topics
+                        topics = load_physics_topics()
+                    except Exception as e:
+                        logger.warning(f"Could not load physics topics: {e}")
+                        topics = []
+            
+            # Format topics for the prompt
+            if topics:
+                topics_str = "\n".join([f"- {t.get('code', '')}: {t.get('name', '')}" for t in topics])
+            else:
+                topics_str = "No syllabus topics available"
+            
+            return prompts.get("generate_rq", "").format(
+                ia_topic=ia_topic or "",
+                topics=topics_str
+            )
         
         elif action == "expand_background":
             ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)

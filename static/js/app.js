@@ -51,12 +51,6 @@ $(document).ready(function () {
         updateSubjectUI(subject);
     });
     
-    // Initialize physics topic selector - handle multiple selection
-    $('#physics-topic-select').on('change', function() {
-        updateSelectedTopics();
-        updateSelectedTopicsDisplay();
-    });
-    
     // Load saved subject on page load
     loadSubject();
 
@@ -341,24 +335,6 @@ function updateSubjectUI(subject) {
         ? 'Enter your Chemistry research goal...'
         : 'Enter your research goal to begin...';
     $('#chat-input').attr('placeholder', placeholder);
-    
-    // Show/hide physics topic dropdown wrapper
-    if (subject === 'physics') {
-        if (selectedTopics.length === 0) {
-            // No topics selected yet - show dropdown so user can pick
-            $('#physics-topic-wrapper').show();
-            loadPhysicsTopics();
-        } else {
-            // Topics already selected - keep wrapper collapsed, just show summary
-            $('#physics-topic-wrapper').hide();
-        }
-        updateSelectedTopicsDisplay();
-    } else {
-        $('#physics-topic-wrapper').hide();
-        $('#physics-topic-select').val(null);
-        selectedTopics = [];
-        updateSelectedTopicsDisplay();
-    }
 }
 
 function saveSubject(subject) {
@@ -381,114 +357,66 @@ function updateSubjectBadge(subject) {
     updateSubjectUI(subject);
 }
 
-// Physics IA Functions
-let selectedTopics = [];
-
-function loadPhysicsTopics() {
+// Physics IA Functions - Load all topics from syllabus automatically
+function loadAllPhysicsTopics(callback) {
     $.get('/api/physics/topics', function(data) {
         const topics = data.topics || [];
-        const topicSelect = $('#physics-topic-select');
-        topicSelect.empty();
-        
-        // Group topics by category for optgroup organization
-        const topicsByCategory = {};
-        topics.forEach(topic => {
-            const category = topic.category || 'Other';
-            if (!topicsByCategory[category]) {
-                topicsByCategory[category] = [];
-            }
-            topicsByCategory[category].push(topic);
-        });
-        
-        // Create optgroups for better organization
-        Object.keys(topicsByCategory).sort().forEach(category => {
-            const optgroup = $('<optgroup>').attr('label', category);
-            
-            topicsByCategory[category].forEach(topic => {
-                const option = $('<option>')
-                    .attr('value', JSON.stringify(topic))
-                    .text(`${topic.code}: ${topic.name}`);
-                optgroup.append(option);
-            });
-            
-            topicSelect.append(optgroup);
-        });
+        if (callback) callback(topics);
+    }).fail(function() {
+        console.error('Failed to load physics topics');
+        if (callback) callback([]);
     });
-}
-
-function updateSelectedTopics() {
-    const selectedTopicValues = $('#physics-topic-select').val() || [];
-    selectedTopics = [];
-    
-    selectedTopicValues.forEach(topicValue => {
-        try {
-            selectedTopics.push(JSON.parse(topicValue));
-        } catch (e) {
-            console.error('Error parsing topic:', e);
-        }
-    });
-    
-    // Save selected topics
-    if (selectedTopics.length > 0) {
-        $.ajax({
-            url: '/api/topics',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ topics: selectedTopics }),
-            success: function(data) {
-                console.log('Topics saved:', data.topics);
-            }
-        });
-    }
-}
-
-function updateSelectedTopicsDisplay() {
-    const displayDiv = $('#selected-topics-display');
-    displayDiv.empty();
-    
-    if (selectedTopics.length > 0) {
-        const topicsText = selectedTopics.map(t => `${t.code}: ${t.name}`).join(', ');
-        displayDiv.text(`Selected: ${topicsText}`).show();
-    } else {
-        displayDiv.hide();
-    }
-}
-
-// Collapse physics topic dropdown after initial use, keeping summary visible
-function collapsePhysicsTopicsIfAny() {
-    if (selectedSubject === 'physics' && selectedTopics.length > 0) {
-        $('#physics-topic-wrapper').slideUp(150);
-        updateSelectedTopicsDisplay();
-    }
 }
 
 function generateIATopic() {
-    if (selectedTopics.length === 0) {
-        alert('Please select at least one Physics topic');
-        return;
-    }
-    
     const researchGoal = $('#chat-input').val() || '';
     
-    $.ajax({
-        url: '/api/step',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-            action: 'generate_ia_topic',
-            research_goal: researchGoal,
-            use_mcts: false
-        }),
-        success: function(data) {
-            if (data.idea) {
-                displayIATopic(data.idea);
+    // Load all topics from syllabus for physics
+    if (selectedSubject === 'physics') {
+        loadAllPhysicsTopics(function(allTopics) {
+            $.ajax({
+                url: '/api/step',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    action: 'generate_ia_topic',
+                    research_goal: researchGoal,
+                    topics: allTopics, // Pass all topics from syllabus
+                    use_mcts: false
+                }),
+                success: function(data) {
+                    if (data.idea) {
+                        displayIATopic(data.idea);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Error generating IA topic:', xhr);
+                    alert('Error generating IA topic. Please try again.');
+                }
+            });
+        });
+    } else {
+        // For non-physics subjects, proceed without topics
+        $.ajax({
+            url: '/api/step',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                action: 'generate_ia_topic',
+                research_goal: researchGoal,
+                use_mcts: false
+            }),
+            success: function(data) {
+                if (data.idea) {
+                    displayIATopic(data.idea);
+                }
+            },
+            error: function(xhr) {
+                console.error('Error generating IA topic:', xhr);
+                alert('Error generating IA topic. Please try again.');
             }
-        },
-        error: function(xhr) {
-            console.error('Error generating IA topic:', xhr);
-            alert('Error generating IA topic. Please try again.');
-        }
-    });
+        });
+    }
 }
 
 function displayIATopic(content) {
@@ -497,7 +425,10 @@ function displayIATopic(content) {
     $('#physics-ia-sections').show();
 }
 
-function generateRQ() {
+// Make generateRQ globally accessible
+window.generateRQ = function generateRQ() {
+    console.log('generateRQ called');
+    
     // Get research brief content - try both IA topic and main idea
     let researchContent = $('#ia-topic-content').text();
     if (!researchContent || researchContent.trim().length === 0) {
@@ -505,35 +436,287 @@ function generateRQ() {
         researchContent = $('#main-idea').text() || main_idea;
     }
     
+    console.log('Research content length:', researchContent ? researchContent.trim().length : 0);
+    
     if (!researchContent || researchContent.trim().length === 0) {
         alert('Please generate a research brief first.');
         return;
     }
     
-    $.ajax({
-        url: '/api/generate_rq',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ ia_topic: researchContent }),
-        success: function(data) {
-            displayRQ(data.research_question, data.warnings || []);
-        },
-        error: function(xhr) {
-            console.error('Error generating RQ:', xhr);
-            alert('Error generating Research Question. Please try again.');
-        }
-    });
-}
+    // Show loading state
+    const btn = $('#generate-rq-btn-main');
+    const originalText = btn.text();
+    btn.prop('disabled', true).text('Generating...');
+    
+    // Load all topics from syllabus if physics subject
+    const sendRQRequest = function(topics) {
+        $.ajax({
+            url: '/api/generate_rq',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 
+                ia_topic: researchContent,
+                topics: topics || [] // Pass all topics from syllabus
+            }),
+            success: function(data) {
+                console.log('RQ generation success:', data);
+                displayRQ(data.research_question, data.warnings || [], data.is_valid);
+                // Also display in chat area with approve/decline options
+                displayRQInChat(data.research_question, data.warnings || [], data.is_valid);
+                btn.prop('disabled', false).text(originalText);
+            },
+            error: function(xhr) {
+                console.error('Error generating RQ:', xhr);
+                console.error('Response:', xhr.responseText);
+                alert('Error generating Research Question: ' + (xhr.responseJSON?.error || xhr.statusText || 'Please try again.'));
+                btn.prop('disabled', false).text(originalText);
+            }
+        });
+    };
+    
+    // Load all topics from syllabus for physics
+    if (selectedSubject === 'physics') {
+        loadAllPhysicsTopics(function(allTopics) {
+            console.log('Loaded all physics topics from syllabus:', allTopics.length);
+            sendRQRequest(allTopics);
+        });
+    } else {
+        // For non-physics subjects, proceed without topics
+        sendRQRequest([]);
+    }
+};
 
-function displayRQ(rq, warnings) {
+function displayRQ(rq, warnings, is_valid) {
     $('#rq-content').text(rq);
     $('#rq-display').show();
     
-    if (warnings.length > 0) {
-        $('#rq-warnings').html('<strong>Warnings:</strong><ul>' + 
-            warnings.map(w => `<li>${w}</li>`).join('') + '</ul>');
+    // Show validation status
+    if (is_valid === false) {
+        $('#rq-content').css('color', '#d32f2f');
     } else {
-        $('#rq-warnings').empty();
+        $('#rq-content').css('color', '#2e7d32');
+    }
+    
+    if (warnings && warnings.length > 0) {
+        $('#rq-warnings').html('<strong style="color: #d32f2f;">⚠️ Validation Warnings:</strong><ul style="margin-top: 8px;">' + 
+            warnings.map(w => `<li style="margin: 5px 0;">${w}</li>`).join('') + '</ul>');
+        $('#rq-warnings').show();
+    } else {
+        $('#rq-warnings').empty().hide();
+    }
+}
+
+function displayRQInChat(rq, warnings, is_valid) {
+    const chatArea = $("#chat-box");
+    
+    // Create RQ display card
+    const rqCard = $(`
+        <div class="rq-card" style="margin: 15px 0; padding: 20px; background: ${is_valid ? '#e8f5e9' : '#fff3e0'}; border: 2px solid ${is_valid ? '#4caf50' : '#ff9800'}; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; flex: 1; color: #333;">Research Question</h3>
+                <span class="rq-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; ${is_valid ? 'background: #4caf50; color: white;' : 'background: #ff9800; color: white;'}">
+                    ${is_valid ? '✓ Valid' : '⚠ Needs Review'}
+                </span>
+            </div>
+            <div class="rq-text" style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid ${is_valid ? '#4caf50' : '#ff9800'};">
+                ${rq}
+            </div>
+            ${warnings && warnings.length > 0 ? `
+                <div class="rq-warnings" style="margin-bottom: 15px; padding: 12px; background: #ffebee; border-radius: 6px; border-left: 4px solid #d32f2f;">
+                    <strong style="color: #d32f2f; display: block; margin-bottom: 8px;">⚠️ Validation Issues:</strong>
+                    <ul style="margin: 0; padding-left: 20px; color: #c62828;">
+                        ${warnings.map(w => `<li style="margin: 5px 0;">${w}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+            <div class="rq-actions" style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="rq-approve-btn" style="flex: 1; padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    ✓ Approve
+                </button>
+                <button class="rq-decline-btn" style="flex: 1; padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    ✗ Decline
+                </button>
+                <button class="rq-feedback-btn" style="flex: 1; padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    💬 Provide Feedback
+                </button>
+            </div>
+        </div>
+    `);
+    
+    // Add hover effects
+    rqCard.find('.rq-approve-btn').hover(
+        function() { $(this).css('background', '#45a049'); },
+        function() { $(this).css('background', '#4caf50'); }
+    );
+    rqCard.find('.rq-decline-btn').hover(
+        function() { $(this).css('background', '#da190b'); },
+        function() { $(this).css('background', '#f44336'); }
+    );
+    rqCard.find('.rq-feedback-btn').hover(
+        function() { $(this).css('background', '#0b7dda'); },
+        function() { $(this).css('background', '#2196f3'); }
+    );
+    
+    // Add click handlers
+    rqCard.find('.rq-approve-btn').on('click', function() {
+        handleRQApproval(rq);
+        rqCard.fadeOut(300, function() { $(this).remove(); });
+    });
+    
+    rqCard.find('.rq-decline-btn').on('click', function() {
+        handleRQDecline(rq);
+        rqCard.fadeOut(300, function() { $(this).remove(); });
+    });
+    
+    rqCard.find('.rq-feedback-btn').on('click', function() {
+        showRQFeedbackModal(rq, warnings);
+    });
+    
+    // Append to chat area
+    chatArea.append(rqCard);
+    
+    // Scroll to bottom
+    chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+}
+
+function handleRQApproval(rq) {
+    // Update the RQ in the sidebar
+    $('#rq-content').text(rq);
+    $('#rq-display').show();
+    $('#rq-content').css('color', '#2e7d32');
+    
+    // Show success message
+    const chatArea = $("#chat-box");
+    const successMsg = $('<div></div>')
+        .attr('data-sender', 'system')
+        .html('<span style="color: #4caf50;">✓ Research Question approved and saved.</span>')
+        .hide();
+    chatArea.append(successMsg);
+    successMsg.slideDown();
+    chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+    
+    // Update backend state if needed
+    if (typeof current_node !== 'undefined' && current_node) {
+        // RQ is already saved in backend from generation
+        console.log('RQ approved:', rq);
+    }
+}
+
+function handleRQDecline(rq) {
+    // Show message
+    const chatArea = $("#chat-box");
+    const declineMsg = $('<div></div>')
+        .attr('data-sender', 'system')
+        .html('<span style="color: #f44336;">✗ Research Question declined. You can generate a new one.</span>')
+        .hide();
+    chatArea.append(declineMsg);
+    declineMsg.slideDown();
+    chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+}
+
+function showRQFeedbackModal(rq, warnings) {
+    // Create feedback modal
+    const modal = $(`
+        <div class="rq-feedback-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h2 style="margin-top: 0; margin-bottom: 20px;">Provide Feedback on Research Question</h2>
+                <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 6px;">
+                    <strong>Current RQ:</strong>
+                    <div style="margin-top: 8px; font-style: italic; color: #666;">${rq}</div>
+                </div>
+                ${warnings && warnings.length > 0 ? `
+                    <div style="margin-bottom: 20px; padding: 15px; background: #ffebee; border-radius: 6px; border-left: 4px solid #d32f2f;">
+                        <strong style="color: #d32f2f;">Current Issues:</strong>
+                        <ul style="margin-top: 8px; color: #c62828;">
+                            ${warnings.map(w => `<li>${w}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Your Feedback:</label>
+                    <textarea id="rq-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit;" placeholder="Describe what should be changed or improved..."></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="rq-feedback-cancel" style="padding: 10px 20px; background: #e0e0e0; color: #333; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button class="rq-feedback-submit" style="padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        Submit Feedback
+                    </button>
+                </div>
+            </div>
+        </div>
+    `);
+    
+    // Add handlers
+    modal.find('.rq-feedback-cancel').on('click', function() {
+        modal.fadeOut(300, function() { $(this).remove(); });
+    });
+    
+    modal.find('.rq-feedback-submit').on('click', function() {
+        const feedback = $('#rq-feedback-text').val().trim();
+        if (feedback) {
+            submitRQFeedback(rq, feedback, warnings);
+            modal.fadeOut(300, function() { $(this).remove(); });
+        } else {
+            alert('Please provide feedback before submitting.');
+        }
+    });
+    
+    // Close on overlay click
+    modal.on('click', function(e) {
+        if ($(e.target).hasClass('rq-feedback-modal')) {
+            modal.fadeOut(300, function() { $(this).remove(); });
+        }
+    });
+    
+    // Add to body
+    $('body').append(modal);
+    $('#rq-feedback-text').focus();
+}
+
+function submitRQFeedback(rq, feedback, warnings) {
+    // Load all topics from syllabus for physics, then send feedback
+    const sendFeedbackRequest = function(topics) {
+        $.ajax({
+            url: '/api/generate_rq',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                ia_topic: $('#ia-topic-content').text() || $('#main-idea').text() || main_idea,
+                topics: topics || [],
+                feedback: feedback,
+                previous_rq: rq
+            }),
+            success: function(data) {
+                // Show new RQ in chat
+                displayRQInChat(data.research_question, data.warnings || [], data.is_valid);
+                // Update sidebar
+                displayRQ(data.research_question, data.warnings || [], data.is_valid);
+                
+                const chatArea = $("#chat-box");
+                const feedbackMsg = $('<div></div>')
+                    .attr('data-sender', 'system')
+                    .html('<span style="color: #2196f3;">💬 Feedback received. New Research Question generated.</span>')
+                    .hide();
+                chatArea.append(feedbackMsg);
+                feedbackMsg.slideDown();
+                chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+            },
+            error: function(xhr) {
+                console.error('Error regenerating RQ with feedback:', xhr);
+                alert('Error regenerating Research Question. Please try again.');
+            }
+        });
+    };
+    
+    // Load all topics from syllabus for physics
+    if (selectedSubject === 'physics') {
+        loadAllPhysicsTopics(function(allTopics) {
+            sendFeedbackRequest(allTopics);
+        });
+    } else {
+        sendFeedbackRequest([]);
     }
 }
 
@@ -587,8 +770,23 @@ function toggleSection(section) {
 
 // Event handlers
 $(document).ready(function() {
-    // Connect main RQ button to generateRQ
-    $('#generate-rq-btn-main').on('click', generateRQ);
+    // Connect main RQ button to generateRQ - use event delegation to ensure it works even if button is dynamically shown
+    $(document).on('click', '#generate-rq-btn-main', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Generate RQ button clicked');
+        generateRQ();
+        return false;
+    });
+    
+    // Also attach directly to the button as a fallback
+    $('#generate-rq-btn-main').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Generate RQ button clicked (direct handler)');
+        generateRQ();
+        return false;
+    });
     $('.expand-section-btn').on('click', function() {
         const section = $(this).data('section');
         expandSection(section);
@@ -788,7 +986,6 @@ function sendMessage() {
             }
 
             // After successful idea generation, collapse physics topics if any
-            collapsePhysicsTopicsIfAny();
         },
         error: function (xhr, status, error) {
             // Remove loading indicator

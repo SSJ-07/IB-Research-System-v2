@@ -1274,6 +1274,51 @@ def step():
                 "content": "Created a new approach based on the original research goal."
             })
 
+        elif action == "generate_ia_topic":
+            # Handle Physics IA topic generation
+            research_goal = data.get("research_goal", "")
+            topics = data.get("topics", [])  # Get all topics from syllabus
+            
+            # Get subject from state or request
+            subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
+            
+            # Generate IA topic using ideation agent
+            response = mcts.ideation_agent.execute_action(
+                "generate_ia_topic",
+                {
+                    "research_goal": research_goal,
+                    "current_state": current_node.state,
+                    "subject": subject_from_state,
+                    "topics": topics,  # Pass all topics from syllabus
+                    "selected_topics": topics  # Also pass as selected_topics for prompt compatibility
+                }
+            )
+            
+            ia_topic = response.get("content", "").strip()
+            
+            # Update state with IA topic
+            if not hasattr(current_node.state, "ia_topic"):
+                current_node.state.ia_topic = ia_topic
+            if topics:
+                current_node.state.selected_topics = topics
+            if not hasattr(current_node.state, "assessment_type"):
+                current_node.state.assessment_type = "IA"
+            
+            # Update main idea
+            main_idea = ia_topic
+            
+            chat_messages.append({
+                "role": "system",
+                "content": "IA topic generated successfully."
+            })
+            
+            return jsonify({
+                "idea": ia_topic,
+                "nodeId": current_node.id,
+                "action": action,
+                "depth": current_node.state.depth
+            })
+
         else:
             return jsonify({"error": "Invalid action"}), 400
 
@@ -2473,41 +2518,15 @@ def handle_stop_exploration():
     emit('exploration_stopped')
 
 # Global state for selected topics
-selected_topics_global = []
-
 @app.route("/api/physics/topics", methods=["GET"])
 def get_physics_topics():
-    """Get all Physics topics."""
+    """Get all Physics topics from syllabus."""
     try:
         topics = load_physics_topics()
         return jsonify({"topics": topics})
     except Exception as e:
         logger.error(f"Error loading physics topics: {str(e)}")
         return jsonify({"error": f"Failed to load topics: {str(e)}"}), 500
-
-@app.route("/api/topics", methods=["GET", "POST"])
-def handle_topics():
-    """Get or set selected topics."""
-    global selected_topics_global
-    
-    if request.method == "GET":
-        return jsonify({"topics": selected_topics_global})
-    
-    elif request.method == "POST":
-        data = request.get_json()
-        if not data or "topics" not in data:
-            return jsonify({"error": "Missing topics in request"}), 400
-        
-        selected_topics_global = data["topics"]
-        
-        # Update current node state if it exists
-        global current_node
-        if current_node:
-            current_node.state.selected_topics = selected_topics_global
-            if not current_node.state.assessment_type:
-                current_node.state.assessment_type = "IA"
-        
-        return jsonify({"topics": selected_topics_global})
 
 @app.route("/api/generate_rq", methods=["POST"])
 def generate_rq():
@@ -2518,11 +2537,25 @@ def generate_rq():
         return jsonify({"error": "Missing ia_topic in request"}), 400
     
     ia_topic = data["ia_topic"]
+    topics = data.get("topics", [])  # Get topics from request
     
     try:
         global current_node
         if not current_node:
             return jsonify({"error": "No current node found"}), 400
+        
+        # If topics not provided and subject is physics, load all topics from syllabus
+        subject = getattr(current_node.state, "subject", None) or selected_subject
+        if not topics and subject == "physics":
+            try:
+                topics = load_physics_topics()
+            except Exception as e:
+                logger.warning(f"Could not load physics topics: {e}")
+                topics = []
+        
+        # Update selected topics in state if provided
+        if topics:
+            current_node.state.selected_topics = topics
         
         # Generate RQ using ideation agent
         response = ideation_agent.execute_action(
@@ -2530,7 +2563,8 @@ def generate_rq():
             {
                 "ia_topic": ia_topic,
                 "current_state": current_node.state,
-                "subject": current_node.state.subject
+                "subject": subject,
+                "topics": topics  # Pass all topics from syllabus to the agent
             }
         )
         

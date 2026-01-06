@@ -659,16 +659,6 @@
                         <option value="physics">Physics</option>
                         <option value="chemistry">Chemistry</option>
                     </select>
-                    
-                    <!-- Physics Topic Dropdown (shown only when Physics is selected) -->
-                    <div id="physics-topic-wrapper" style="display: none; flex: 0 0 auto;">
-                        <select id="physics-topic-select" multiple class="compact-select multiple-select" style="padding: 8px 12px; border: 1px solid #e0e3e8; border-radius: 8px; background-color: #fff; font-size: 14px; color: #374151; cursor: pointer; width: auto; min-width: 160px; max-width: 260px; max-height: 120px; overflow-y: auto;">
-                            <!-- Topics will be populated here -->
-                        </select>
-                        <div id="selected-topics-display" style="margin-top: 5px; font-size: 12px; color: #6b7280;">
-                            <!-- Selected topics will be shown here -->
-                        </div>
-                    </div>
                 </div>
                 
                 <input type="text" id="chat-input" placeholder="Enter your research goal to begin...">
@@ -693,7 +683,7 @@
             
             <!-- Generate Research Question Button (shown after research brief is generated) -->
             <div id="generate-rq-container" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e3e8;">
-                <button id="generate-rq-btn-main" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 14px; font-weight: 500; border-radius: 8px; background-color: #007bff; color: white; border: none; cursor: pointer; transition: background-color 0.2s;">
+                <button id="generate-rq-btn-main" class="btn btn-primary" onclick="generateRQ(); return false;" style="width: 100%; padding: 10px; font-size: 14px; font-weight: 500; border-radius: 8px; background-color: #007bff; color: white; border: none; cursor: pointer; transition: background-color 0.2s;">
                     Generate Research Question
                 </button>
             </div>

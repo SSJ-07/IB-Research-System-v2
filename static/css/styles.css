@@ -17,29 +17,6 @@
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
-/* Multiple select styling */
-.multiple-select {
-    min-height: 80px;
-    max-height: 120px;
-}
-
-.multiple-select option {
-    padding: 6px 8px;
-}
-
-.multiple-select option:checked {
-    background-color: #e3f2fd;
-    font-weight: 500;
-}
-
-/* Selected topics display */
-#selected-topics-display {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 5px;
-    line-height: 1.4;
-}
-
 /* Subject selector container */
 .subject-selector {
     flex-wrap: wrap;
