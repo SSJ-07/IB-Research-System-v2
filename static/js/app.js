@@ -460,15 +460,21 @@ window.generateRQ = function generateRQ() {
             }),
             success: function(data) {
                 console.log('RQ generation success:', data);
-                displayRQ(data.research_question, data.warnings || [], data.is_valid);
-                // Also display in chat area with approve/decline options
-                displayRQInChat(data.research_question, data.warnings || [], data.is_valid);
+                // Always display the RQ, even if there are warnings
+                if (data.research_question) {
+                    displayRQ(data.research_question, data.warnings || [], data.is_valid);
+                    // Also display in chat area with approve/decline options
+                    displayRQInChat(data.research_question, data.warnings || [], data.is_valid);
+                } else {
+                    alert('No research question was generated. Please try again.');
+                }
                 btn.prop('disabled', false).text(originalText);
             },
             error: function(xhr) {
                 console.error('Error generating RQ:', xhr);
                 console.error('Response:', xhr.responseText);
-                alert('Error generating Research Question: ' + (xhr.responseJSON?.error || xhr.statusText || 'Please try again.'));
+                const errorMsg = xhr.responseJSON?.error || xhr.statusText || 'Please try again.';
+                alert('Error generating Research Question: ' + errorMsg);
                 btn.prop('disabled', false).text(originalText);
             }
         });
@@ -530,6 +536,9 @@ function displayRQInChat(rq, warnings, is_valid) {
                 </div>
             ` : ''}
             <div class="rq-actions" style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="rq-edit-btn" style="flex: 1; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    ✏️ Edit
+                </button>
                 <button class="rq-approve-btn" style="flex: 1; padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
                     ✓ Approve
                 </button>
@@ -544,6 +553,10 @@ function displayRQInChat(rq, warnings, is_valid) {
     `);
     
     // Add hover effects
+    rqCard.find('.rq-edit-btn').hover(
+        function() { $(this).css('background', '#f57c00'); },
+        function() { $(this).css('background', '#ff9800'); }
+    );
     rqCard.find('.rq-approve-btn').hover(
         function() { $(this).css('background', '#45a049'); },
         function() { $(this).css('background', '#4caf50'); }
@@ -558,8 +571,15 @@ function displayRQInChat(rq, warnings, is_valid) {
     );
     
     // Add click handlers
+    rqCard.find('.rq-edit-btn').on('click', function() {
+        editRQ(rqCard, rq, warnings, is_valid);
+    });
+    
     rqCard.find('.rq-approve-btn').on('click', function() {
-        handleRQApproval(rq);
+        const editedRQ = rqCard.find('.rq-text').text().trim();
+        handleRQApproval(editedRQ);
+        // Hide all other RQ cards
+        $('.rq-card').not(rqCard).fadeOut(300, function() { $(this).remove(); });
         rqCard.fadeOut(300, function() { $(this).remove(); });
     });
     
@@ -569,7 +589,8 @@ function displayRQInChat(rq, warnings, is_valid) {
     });
     
     rqCard.find('.rq-feedback-btn').on('click', function() {
-        showRQFeedbackModal(rq, warnings);
+        const currentRQ = rqCard.find('.rq-text').text().trim();
+        showRQFeedbackModal(currentRQ, warnings);
     });
     
     // Append to chat area
@@ -579,11 +600,77 @@ function displayRQInChat(rq, warnings, is_valid) {
     chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
 }
 
+function editRQ(rqCard, rq, warnings, is_valid) {
+    const rqTextDiv = rqCard.find('.rq-text');
+    const currentText = rqTextDiv.text().trim();
+    
+    // Create editable textarea
+    const textarea = $('<textarea></textarea>')
+        .css({
+            'width': '100%',
+            'min-height': '80px',
+            'padding': '12px',
+            'border': '2px solid #2196f3',
+            'border-radius': '6px',
+            'font-size': '16px',
+            'font-weight': '600',
+            'font-family': 'inherit',
+            'resize': 'vertical'
+        })
+        .val(currentText);
+    
+    // Replace text with textarea
+    rqTextDiv.replaceWith(textarea);
+    
+    // Add save/cancel buttons
+    const editActions = $('<div class="rq-edit-actions" style="display: flex; gap: 10px; margin-top: 10px;"></div>');
+    const saveBtn = $('<button class="rq-save-btn" style="flex: 1; padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Save</button>');
+    const cancelBtn = $('<button class="rq-cancel-btn" style="flex: 1; padding: 8px 16px; background: #757575; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>');
+    
+    editActions.append(saveBtn).append(cancelBtn);
+    rqCard.find('.rq-actions').before(editActions);
+    
+    // Hide original action buttons
+    rqCard.find('.rq-actions').hide();
+    
+    // Save handler
+    saveBtn.on('click', function() {
+        const newRQ = textarea.val().trim();
+        if (newRQ) {
+            // Replace textarea with updated text
+            const newTextDiv = $('<div class="rq-text" style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #2196f3;"></div>')
+                .text(newRQ);
+            textarea.replaceWith(newTextDiv);
+            editActions.remove();
+            rqCard.find('.rq-actions').show();
+        }
+    });
+    
+    // Cancel handler
+    cancelBtn.on('click', function() {
+        const originalTextDiv = $('<div class="rq-text" style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid ' + (is_valid ? '#4caf50' : '#ff9800') + ';"></div>')
+            .text(currentText);
+        textarea.replaceWith(originalTextDiv);
+        editActions.remove();
+        rqCard.find('.rq-actions').show();
+    });
+}
+
 function handleRQApproval(rq) {
+    // Hide all other RQ cards in chat
+    $('.rq-card').fadeOut(300, function() { $(this).remove(); });
+    
+    // Ensure physics-ia-sections container is visible
+    $('#physics-ia-sections').show();
+    
     // Update the RQ in the sidebar
     $('#rq-content').text(rq);
     $('#rq-display').show();
     $('#rq-content').css('color', '#2e7d32');
+    $('#rq-warnings').empty().hide();
+    
+    // Show section generation buttons
+    $('#expand-buttons').show();
     
     // Show success message
     const chatArea = $("#chat-box");
@@ -595,11 +682,19 @@ function handleRQApproval(rq) {
     successMsg.slideDown();
     chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
     
-    // Update backend state if needed
-    if (typeof current_node !== 'undefined' && current_node) {
-        // RQ is already saved in backend from generation
-        console.log('RQ approved:', rq);
-    }
+    // Update backend state
+    $.ajax({
+        url: '/api/approve_rq',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ research_question: rq }),
+        success: function(data) {
+            console.log('RQ approved in backend:', data);
+        },
+        error: function(xhr) {
+            console.error('Error approving RQ:', xhr);
+        }
+    });
 }
 
 function handleRQDecline(rq) {
@@ -724,6 +819,11 @@ function expandSection(section) {
     const iaTopic = $('#ia-topic-content').text();
     const rq = $('#rq-content').text();
     
+    // Show loading state
+    const btn = $(`.expand-section-btn[data-section="${section}"]`);
+    const originalText = btn.text();
+    btn.prop('disabled', true).text('Generating...');
+    
     $.ajax({
         url: `/api/expand/${section}`,
         method: 'POST',
@@ -733,11 +833,307 @@ function expandSection(section) {
             research_question: rq
         }),
         success: function(data) {
+            btn.prop('disabled', false).text(originalText);
+            // Display in chat with edit/approve/feedback
+            displaySectionInChat(section, data.content, data.citations || []);
+            // Also update sidebar display
             displayExpandedSection(section, data.content, data.citations || []);
         },
         error: function(xhr) {
+            btn.prop('disabled', false).text(originalText);
             console.error(`Error expanding ${section}:`, xhr);
             alert(`Error expanding ${section}. Please try again.`);
+        }
+    });
+}
+
+function displaySectionInChat(section, content, citations) {
+    const chatArea = $("#chat-box");
+    const sectionNames = {
+        'background': 'Background Information',
+        'procedure': 'Procedure',
+        'research_design': 'Research Design'
+    };
+    const sectionName = sectionNames[section] || section;
+    
+    // Create section display card
+    const sectionCard = $(`
+        <div class="section-card" data-section="${section}" style="margin: 15px 0; padding: 20px; background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; flex: 1; color: #333;">${sectionName}</h3>
+                <span class="section-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #2196f3; color: white;">
+                    Draft
+                </span>
+            </div>
+            <div class="section-text" style="font-size: 14px; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #2196f3; white-space: pre-wrap;">
+                ${formatMessage(content)}
+            </div>
+            ${citations && citations.length > 0 ? `
+                <div class="section-citations" style="margin-bottom: 15px; padding: 12px; background: #f5f5f5; border-radius: 6px;">
+                    <strong style="display: block; margin-bottom: 8px;">Citations:</strong>
+                    ${citations.map(c => {
+                        const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
+                        return `<div style="margin: 5px 0; padding: 5px; background: white; border-radius: 4px;">${citationStr}</div>`;
+                    }).join('')}
+                </div>
+            ` : ''}
+            <div class="section-actions" style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="section-edit-btn" style="flex: 1; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    ✏️ Edit
+                </button>
+                <button class="section-approve-btn" style="flex: 1; padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    ✓ Approve
+                </button>
+                <button class="section-decline-btn" style="flex: 1; padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    ✗ Decline
+                </button>
+                <button class="section-feedback-btn" style="flex: 1; padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    💬 Provide Feedback
+                </button>
+            </div>
+        </div>
+    `);
+    
+    // Add hover effects
+    sectionCard.find('.section-edit-btn').hover(
+        function() { $(this).css('background', '#f57c00'); },
+        function() { $(this).css('background', '#ff9800'); }
+    );
+    sectionCard.find('.section-approve-btn').hover(
+        function() { $(this).css('background', '#45a049'); },
+        function() { $(this).css('background', '#4caf50'); }
+    );
+    sectionCard.find('.section-decline-btn').hover(
+        function() { $(this).css('background', '#da190b'); },
+        function() { $(this).css('background', '#f44336'); }
+    );
+    sectionCard.find('.section-feedback-btn').hover(
+        function() { $(this).css('background', '#0b7dda'); },
+        function() { $(this).css('background', '#2196f3'); }
+    );
+    
+    // Add click handlers
+    sectionCard.find('.section-edit-btn').on('click', function() {
+        editSection(sectionCard, section, content, citations);
+    });
+    
+    sectionCard.find('.section-approve-btn').on('click', function() {
+        const editedContent = sectionCard.find('.section-text').html();
+        handleSectionApproval(section, editedContent, citations);
+        // Hide all other section cards for this section type
+        $(`.section-card[data-section="${section}"]`).not(sectionCard).fadeOut(300, function() { $(this).remove(); });
+        sectionCard.fadeOut(300, function() { $(this).remove(); });
+    });
+    
+    sectionCard.find('.section-decline-btn').on('click', function() {
+        handleSectionDecline(section);
+        sectionCard.fadeOut(300, function() { $(this).remove(); });
+    });
+    
+    sectionCard.find('.section-feedback-btn').on('click', function() {
+        const currentContent = sectionCard.find('.section-text').html();
+        showSectionFeedbackModal(section, currentContent, citations);
+    });
+    
+    // Append to chat area
+    chatArea.append(sectionCard);
+    chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+}
+
+function editSection(sectionCard, section, content, citations) {
+    const sectionTextDiv = sectionCard.find('.section-text');
+    const currentHtml = sectionTextDiv.html();
+    
+    // Create editable textarea
+    const textarea = $('<textarea></textarea>')
+        .css({
+            'width': '100%',
+            'min-height': '200px',
+            'padding': '12px',
+            'border': '2px solid #2196f3',
+            'border-radius': '6px',
+            'font-size': '14px',
+            'font-family': 'inherit',
+            'resize': 'vertical',
+            'white-space': 'pre-wrap'
+        })
+        .val($('<div>').html(currentHtml).text()); // Convert HTML to text
+    
+    // Replace text with textarea
+    sectionTextDiv.replaceWith(textarea);
+    
+    // Add save/cancel buttons
+    const editActions = $('<div class="section-edit-actions" style="display: flex; gap: 10px; margin-top: 10px;"></div>');
+    const saveBtn = $('<button class="section-save-btn" style="flex: 1; padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Save</button>');
+    const cancelBtn = $('<button class="section-cancel-btn" style="flex: 1; padding: 8px 16px; background: #757575; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>');
+    
+    editActions.append(saveBtn).append(cancelBtn);
+    sectionCard.find('.section-actions').before(editActions);
+    
+    // Hide original action buttons
+    sectionCard.find('.section-actions').hide();
+    
+    // Save handler
+    saveBtn.on('click', function() {
+        const newContent = textarea.val().trim();
+        if (newContent) {
+            // Replace textarea with updated content
+            const newTextDiv = $('<div class="section-text" style="font-size: 14px; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #2196f3; white-space: pre-wrap;"></div>')
+                .html(formatMessage(newContent));
+            textarea.replaceWith(newTextDiv);
+            editActions.remove();
+            sectionCard.find('.section-actions').show();
+        }
+    });
+    
+    // Cancel handler
+    cancelBtn.on('click', function() {
+        const originalTextDiv = $('<div class="section-text" style="font-size: 14px; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #2196f3; white-space: pre-wrap;"></div>')
+            .html(currentHtml);
+        textarea.replaceWith(originalTextDiv);
+        editActions.remove();
+        sectionCard.find('.section-actions').show();
+    });
+}
+
+function handleSectionApproval(section, content, citations) {
+    // Update the section in the sidebar
+    $(`#${section}-content`).html(content);
+    $(`#${section}-section`).show();
+    
+    // Display citations
+    if (citations && citations.length > 0) {
+        const citationsHtml = citations.map(c => {
+            const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
+            return `<div style="margin: 5px 0; padding: 5px; background: #f0f0f0; border-radius: 4px;">${citationStr}</div>`;
+        }).join('');
+        $(`#${section}-citations`).html('<strong>Citations:</strong>' + citationsHtml);
+    }
+    
+    // Show success message
+    const chatArea = $("#chat-box");
+    const successMsg = $('<div></div>')
+        .attr('data-sender', 'system')
+        .html(`<span style="color: #4caf50;">✓ ${section.charAt(0).toUpperCase() + section.slice(1)} approved and saved.</span>`)
+        .hide();
+    chatArea.append(successMsg);
+    successMsg.slideDown();
+    chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+    
+    // Update backend state
+    $.ajax({
+        url: `/api/approve_section/${section}`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ 
+            content: content,
+            citations: citations || []
+        }),
+        success: function(data) {
+            console.log(`Section ${section} approved in backend:`, data);
+        },
+        error: function(xhr) {
+            console.error(`Error approving section ${section}:`, xhr);
+        }
+    });
+}
+
+function handleSectionDecline(section) {
+    const chatArea = $("#chat-box");
+    const declineMsg = $('<div></div>')
+        .attr('data-sender', 'system')
+        .html(`<span style="color: #f44336;">✗ ${section.charAt(0).toUpperCase() + section.slice(1)} declined.</span>`)
+        .hide();
+    chatArea.append(declineMsg);
+    declineMsg.slideDown();
+    chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+}
+
+function showSectionFeedbackModal(section, content, citations) {
+    const sectionNames = {
+        'background': 'Background Information',
+        'procedure': 'Procedure',
+        'research_design': 'Research Design'
+    };
+    const sectionName = sectionNames[section] || section;
+    
+    const modal = $(`
+        <div class="section-feedback-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <h2 style="margin-top: 0; margin-bottom: 20px; color: #333;">Provide Feedback for ${sectionName}</h2>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Your Feedback:</label>
+                    <textarea id="section-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit;" placeholder="Describe what should be changed or improved..."></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="section-feedback-cancel" style="padding: 10px 20px; background: #e0e0e0; color: #333; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button class="section-feedback-submit" style="padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        Submit Feedback
+                    </button>
+                </div>
+            </div>
+        </div>
+    `);
+    
+    // Add handlers
+    modal.find('.section-feedback-cancel').on('click', function() {
+        modal.fadeOut(300, function() { $(this).remove(); });
+    });
+    
+    modal.find('.section-feedback-submit').on('click', function() {
+        const feedback = $('#section-feedback-text').val().trim();
+        if (feedback) {
+            submitSectionFeedback(section, content, feedback, citations);
+            modal.fadeOut(300, function() { $(this).remove(); });
+        } else {
+            alert('Please provide feedback before submitting.');
+        }
+    });
+    
+    // Close on overlay click
+    modal.on('click', function(e) {
+        if ($(e.target).hasClass('section-feedback-modal')) {
+            modal.fadeOut(300, function() { $(this).remove(); });
+        }
+    });
+    
+    // Add to body
+    $('body').append(modal);
+    $('#section-feedback-text').focus();
+}
+
+function submitSectionFeedback(section, content, feedback, citations) {
+    const iaTopic = $('#ia-topic-content').text();
+    const rq = $('#rq-content').text();
+    
+    $.ajax({
+        url: `/api/expand/${section}`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            ia_topic: iaTopic,
+            research_question: rq,
+            feedback: feedback,
+            previous_content: content
+        }),
+        success: function(data) {
+            // Show new section in chat
+            displaySectionInChat(section, data.content, data.citations || []);
+            
+            const chatArea = $("#chat-box");
+            const feedbackMsg = $('<div></div>')
+                .attr('data-sender', 'system')
+                .html(`<span style="color: #2196f3;">💬 Feedback received. New ${section} generated.</span>`)
+                .hide();
+            chatArea.append(feedbackMsg);
+            feedbackMsg.slideDown();
+            chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+        },
+        error: function(xhr) {
+            console.error(`Error regenerating ${section} with feedback:`, xhr);
+            alert(`Error regenerating ${section}. Please try again.`);
         }
     });
 }
@@ -940,7 +1336,10 @@ function sendMessage() {
         url: '/api/chat',
         type: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ content: content }),
+        data: JSON.stringify({ 
+            content: content,
+            subject: selectedSubject  // Include selected subject
+        }),
         success: function (data) {
             // Remove loading indicator
             loadingDiv.remove();
@@ -2505,7 +2904,8 @@ $.ajax({
     type: 'POST',
     contentType: 'application/json',
     data: JSON.stringify({
-        content: messageContent
+        content: messageContent,
+        subject: selectedSubject  // Include selected subject
     }),
     success: function(data) {
         // ...existing success handler code...

@@ -452,6 +452,11 @@ def chat():
             return jsonify({"error": "Invalid payload"}), 400
         
         user_message = data["content"]
+        # Get subject from request, fallback to global variable
+        request_subject = data.get("subject")
+        if request_subject:
+            selected_subject = request_subject  # Update global subject from request
+        
         chat_messages.append({"role": "user", "content": user_message})
         
         try:
@@ -2570,8 +2575,15 @@ def generate_rq():
         
         rq = response.get("content", "").strip()
         
-        # Validate RQ format
-        is_valid, warnings, rewritten_rq = validate_rq_format(rq, "physics", "ia")
+        # Validate RQ format (but don't fail if validation has issues)
+        is_valid = True
+        warnings = []
+        try:
+            is_valid, warnings, rewritten_rq = validate_rq_format(rq, subject or "physics", "ia")
+        except Exception as validation_error:
+            logger.warning(f"RQ validation error (non-fatal): {str(validation_error)}")
+            # Continue with the generated RQ even if validation fails
+            warnings = ["Validation check encountered an error, but RQ was generated successfully."]
         
         # Update state
         current_node.state.research_question = rq
@@ -2587,6 +2599,61 @@ def generate_rq():
         error_trace = traceback.format_exc()
         logger.error(f"RQ generation error: {str(e)}\n{error_trace}")
         return jsonify({"error": f"Failed to generate RQ: {str(e)}"}), 500
+
+@app.route("/api/approve_rq", methods=["POST"])
+def approve_rq():
+    """Approve a research question and save it to state."""
+    global current_node
+    data = request.get_json()
+    
+    if not data or "research_question" not in data:
+        return jsonify({"error": "Missing research_question in request"}), 400
+    
+    rq = data["research_question"]
+    
+    try:
+        if current_node:
+            current_node.state.research_question = rq
+            return jsonify({"message": "Research Question approved", "research_question": rq})
+        else:
+            return jsonify({"error": "No current node found"}), 400
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"Error approving RQ: {str(e)}\n{error_trace}")
+        return jsonify({"error": f"Failed to approve RQ: {str(e)}"}), 500
+
+@app.route("/api/approve_section/<section>", methods=["POST"])
+def approve_section(section):
+    """Approve a section (background, procedure, or research_design) and save it to state."""
+    global current_node
+    data = request.get_json()
+    
+    if not data or "content" not in data:
+        return jsonify({"error": "Missing content in request"}), 400
+    
+    content = data["content"]
+    citations = data.get("citations", [])
+    
+    try:
+        if current_node:
+            # Store section content in state
+            if section == "background":
+                current_node.state.background_content = content
+                current_node.state.background_citations = citations
+            elif section == "procedure":
+                current_node.state.procedure_content = content
+                current_node.state.procedure_citations = citations
+            elif section == "research_design":
+                current_node.state.research_design_content = content
+                current_node.state.research_design_citations = citations
+            
+            return jsonify({"message": f"{section} approved", "content": content})
+        else:
+            return jsonify({"error": "No current node found"}), 400
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"Error approving section {section}: {str(e)}\n{error_trace}")
+        return jsonify({"error": f"Failed to approve section: {str(e)}"}), 500
 
 def generate_citation_query(section_type: str, ia_topic: str, rq: str) -> str:
     """Generate ScholarQA query for citation retrieval."""
@@ -2646,6 +2713,8 @@ def expand_background():
     
     ia_topic = data["ia_topic"]
     research_question = data["research_question"]
+    feedback = data.get("feedback")
+    previous_content = data.get("previous_content")
     
     try:
         global current_node
@@ -2657,16 +2726,23 @@ def expand_background():
         citations_list = retrieve_citations_for_section(query)
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
+        # Include feedback in prompt if provided
+        state_dict = {
+            "ia_topic": ia_topic,
+            "research_question": research_question,
+            "citations": citations_str,
+            "current_state": current_node.state,
+            "subject": current_node.state.subject
+        }
+        if feedback:
+            state_dict["feedback"] = feedback
+        if previous_content:
+            state_dict["previous_content"] = previous_content
+        
         # Generate section
         response = ideation_agent.execute_action(
             "expand_background",
-            {
-                "ia_topic": ia_topic,
-                "research_question": research_question,
-                "citations": citations_str,
-                "current_state": current_node.state,
-                "subject": current_node.state.subject
-            }
+            state_dict
         )
         
         content = response.get("content", "")
@@ -2697,6 +2773,8 @@ def expand_procedure():
     
     ia_topic = data["ia_topic"]
     research_question = data["research_question"]
+    feedback = data.get("feedback")
+    previous_content = data.get("previous_content")
     
     try:
         global current_node
@@ -2709,15 +2787,22 @@ def expand_procedure():
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
         # Generate section
+        # Include feedback in prompt if provided
+        state_dict = {
+            "ia_topic": ia_topic,
+            "research_question": research_question,
+            "citations": citations_str,
+            "current_state": current_node.state,
+            "subject": current_node.state.subject
+        }
+        if feedback:
+            state_dict["feedback"] = feedback
+        if previous_content:
+            state_dict["previous_content"] = previous_content
+        
         response = ideation_agent.execute_action(
             "expand_procedure",
-            {
-                "ia_topic": ia_topic,
-                "research_question": research_question,
-                "citations": citations_str,
-                "current_state": current_node.state,
-                "subject": current_node.state.subject
-            }
+            state_dict
         )
         
         content = response.get("content", "")
@@ -2748,6 +2833,8 @@ def expand_research_design():
     
     ia_topic = data["ia_topic"]
     research_question = data["research_question"]
+    feedback = data.get("feedback")
+    previous_content = data.get("previous_content")
     
     try:
         global current_node
@@ -2760,15 +2847,22 @@ def expand_research_design():
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
         # Generate section
+        # Include feedback in prompt if provided
+        state_dict = {
+            "ia_topic": ia_topic,
+            "research_question": research_question,
+            "citations": citations_str,
+            "current_state": current_node.state,
+            "subject": current_node.state.subject
+        }
+        if feedback:
+            state_dict["feedback"] = feedback
+        if previous_content:
+            state_dict["previous_content"] = previous_content
+        
         response = ideation_agent.execute_action(
             "expand_research_design",
-            {
-                "ia_topic": ia_topic,
-                "research_question": research_question,
-                "citations": citations_str,
-                "current_state": current_node.state,
-                "subject": current_node.state.subject
-            }
+            state_dict
         )
         
         content = response.get("content", "")

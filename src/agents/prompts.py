@@ -762,12 +762,12 @@ RQ FORMAT REQUIREMENTS:
 - Must clearly identify a dependent variable (DV) with units
 - Must specify measurable quantities
 - Must include scope or range of investigation
-- Should follow the pattern: "How does {IV} affect {DV} for {range_or_conditions}?"
+- Should follow the pattern: "How does [IV] affect [DV] for [range_or_conditions]?"
 
 RQ TEMPLATES:
-- "How does {IV} affect {DV} for {range_or_conditions}?"
+- "How does [IV] affect [DV] for [range_or_conditions]?"
   Example: "How does the thickness of foam affect sound attenuation at various frequencies?"
-- "How does {IV} affect {DV} at {levels}, and how does this compare between {groupA} and {groupB} under {controls}?"
+- "How does [IV] affect [DV] at [levels], and how does this compare between [groupA] and [groupB] under [controls]?"
   Example: "How does thickness of EPS and EPE foam affect sound attenuation at various frequencies, and which is more effective?"
 
 Your task:

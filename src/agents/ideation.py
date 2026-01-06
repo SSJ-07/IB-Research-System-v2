@@ -86,11 +86,19 @@ class IdeationAgent(BaseAgent):
                 memory_context = state['current_state'].get_memory_context()
                 state['memory_context'] = memory_context
             
-            prompt = self._get_action_prompt(action, state)
-            
-            # Get subject from state for prompt bundle selection
+            # Get subject from state for prompt bundle selection (do this BEFORE getting prompt)
             subject = state.get("subject") or (getattr(state.get("current_state"), "subject", None) if state.get("current_state") else None)
             prompts = get_prompts_for_subject(subject)
+            
+            # Debug: Log which prompt bundle is being used
+            print(f"\n===== PROMPT BUNDLE SELECTION =====")
+            print(f"Subject: {subject}")
+            print(f"Prompt bundle key: {(subject or 'default').strip().lower() if subject else 'default'}")
+            print(f"Using prompts: {list(prompts.keys())}")
+            print("=====================================\n")
+            
+            # Pass prompts to _get_action_prompt to avoid duplicate retrieval
+            prompt = self._get_action_prompt(action, state, prompts=prompts)
 
             messages = [
                 {"role": "system", "content": prompts["system"]},
@@ -377,15 +385,18 @@ class IdeationAgent(BaseAgent):
         # If all methods fail, return None
         return None
 
-    def _get_action_prompt(self, action: str, state: Dict[str, Any]) -> str:
+    def _get_action_prompt(self, action: str, state: Dict[str, Any], prompts: Optional[Dict[str, str]] = None) -> str:
         """Get the appropriate prompt for the given action."""
         research_goal = state.get("research_goal", "")  # Get research_goal directly
         current_idea = state.get("current_idea", "")
         abstract = state.get("abstract", "")
         
-        # Get subject from state for prompt bundle selection
+        # Get subject from state (always needed for logic checks)
         subject = state.get("subject") or (getattr(state.get("current_state"), "subject", None) if state.get("current_state") else None)
-        prompts = get_prompts_for_subject(subject)
+        
+        # Get prompts bundle (use provided prompts if available, otherwise retrieve)
+        if prompts is None:
+            prompts = get_prompts_for_subject(subject)
         
         # Get assessment_type and check if we should use Physics IA flow
         current_state = state.get("current_state")
