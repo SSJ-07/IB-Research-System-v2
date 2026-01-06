@@ -99,6 +99,21 @@ class IdeationAgent(BaseAgent):
             
             # Pass prompts to _get_action_prompt to avoid duplicate retrieval
             prompt = self._get_action_prompt(action, state, prompts=prompts)
+            
+            # Debug: Log prompt details for generate_rq
+            if action == "generate_rq":
+                print(f"\n===== DEBUG: generate_rq PROMPT =====")
+                print(f"Subject: {subject}")
+                print(f"Prompt template exists: {'generate_rq' in prompts}")
+                print(f"Prompt length: {len(prompt) if prompt else 0}")
+                print(f"Prompt preview: {prompt[:200] if prompt else 'EMPTY'}")
+                print("=====================================\n")
+            
+            # Validate prompt is not empty
+            if not prompt or not prompt.strip():
+                error_msg = f"Empty prompt generated for action '{action}'. Check prompt template and state parameters. Subject: {subject}, Available prompts: {list(prompts.keys())}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
 
             messages = [
                 {"role": "system", "content": prompts["system"]},
@@ -130,6 +145,12 @@ class IdeationAgent(BaseAgent):
                 else:
                     logger.warning("Could not extract query from response")
                     return {"content": content}
+
+            # For expand actions, return raw content directly without JSON parsing
+            expand_actions = ["expand_background", "expand_procedure", "expand_research_design"]
+            if action in expand_actions:
+                # For expand actions, return raw content directly
+                return {"content": content.strip()}
 
             # Try to extract structured data from the response
             parsed_data = self._extract_json_data(content)
@@ -469,7 +490,12 @@ class IdeationAgent(BaseAgent):
             else:
                 topics_str = "No syllabus topics available"
             
-            return prompts.get("generate_rq", "").format(
+            # Get the prompt template
+            prompt_template = prompts.get("generate_rq")
+            if not prompt_template:
+                raise ValueError(f"Prompt template 'generate_rq' not found in prompts bundle. Available keys: {list(prompts.keys())}")
+            
+            return prompt_template.format(
                 ia_topic=ia_topic or "",
                 topics=topics_str
             )
