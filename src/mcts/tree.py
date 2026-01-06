@@ -254,7 +254,13 @@ class MCTS:
                 current_idea=response["content"], 
                 depth=state.depth + 1, 
                 reward=reward,
-                subject=subject
+                subject=subject,
+                selected_topics=getattr(state, 'selected_topics', []).copy() if hasattr(state, 'selected_topics') else [],
+                assessment_type=getattr(state, 'assessment_type', None),
+                ia_topic=getattr(state, 'ia_topic', None),
+                research_question=getattr(state, 'research_question', None),
+                expanded_sections=getattr(state, 'expanded_sections', {}).copy() if hasattr(state, 'expanded_sections') else {},
+                section_citations=getattr(state, 'section_citations', {}).copy() if hasattr(state, 'section_citations') else {}
             )
 
             # Copy memory state from parent
@@ -371,7 +377,13 @@ class MCTS:
             reward=0.0,
             retrieved_knowledge=getattr(old_state, 'retrieved_knowledge', []),
             subject=getattr(old_state, 'subject', None),
-            feedback=getattr(old_state, 'feedback', {})
+            feedback=getattr(old_state, 'feedback', {}),
+            selected_topics=getattr(old_state, 'selected_topics', []).copy() if hasattr(old_state, 'selected_topics') else [],
+            assessment_type=getattr(old_state, 'assessment_type', None),
+            ia_topic=getattr(old_state, 'ia_topic', None),
+            research_question=getattr(old_state, 'research_question', None),
+            expanded_sections=getattr(old_state, 'expanded_sections', {}).copy() if hasattr(old_state, 'expanded_sections') else {},
+            section_citations=getattr(old_state, 'section_citations', {}).copy() if hasattr(old_state, 'section_citations') else {}
         )
         
         # Copy memory state (initialize if not exists)

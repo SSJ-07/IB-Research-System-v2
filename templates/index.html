@@ -653,16 +653,18 @@
             </div>
             <div class="chat-input">
                 <!-- Subject Selection Dropdown -->
-                <div class="subject-selector-container" style="margin-bottom: 15px;">
-                    <label for="subject-selector" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-                        Select Subject (Optional)
-                    </label>
-                    <select id="subject-selector" class="form-control" style="max-width: 300px;">
+                <div class="subject-selector" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+                    <select id="subject-select" style="flex: 0 0 auto; padding: 8px 12px; border: 1px solid #e0e3e8; border-radius: 8px; background-color: #fff; font-size: 14px; color: #374151; cursor: pointer; min-width: 140px;">
                         <option value="">Select Subject</option>
                         <option value="physics">Physics</option>
                         <option value="chemistry">Chemistry</option>
                     </select>
-                    <span id="subject-badge" style="display: none; margin-left: 10px; padding: 4px 12px; background: #007bff; color: white; border-radius: 12px; font-size: 0.9em;"></span>
+                    
+                    <!-- Physics Topic Dropdown (shown only when Physics is selected) -->
+                    <select id="physics-topic-select" style="display: none; flex: 0 0 auto; padding: 8px 12px; border: 1px solid #e0e3e8; border-radius: 8px; background-color: #fff; font-size: 14px; color: #374151; cursor: pointer; min-width: 200px;">
+                        <option value="">Select Topic</option>
+                        <!-- Topics will be populated here -->
+                    </select>
                 </div>
                 
                 <input type="text" id="chat-input" placeholder="Enter your research goal to begin...">
@@ -683,6 +685,52 @@
             </div>
             <div id="main-idea" style="display: none;">
                 <!-- Research Brief content -->
+            </div>
+            
+            <!-- Physics IA Specific Sections -->
+            <div id="physics-ia-sections" style="display: none;">
+                <!-- IA Topic Display -->
+                <div id="ia-topic-display" style="display: none; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <h3 style="margin-top: 0;">IA Topic</h3>
+                    <div id="ia-topic-content"></div>
+                    <button id="generate-rq-btn" class="btn btn-primary" style="margin-top: 10px;">Generate Research Question</button>
+                </div>
+                
+                <!-- RQ Display -->
+                <div id="rq-display" style="display: none; margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
+                    <h3 style="margin-top: 0;">Research Question</h3>
+                    <div id="rq-content" style="font-weight: 600; font-size: 1.1em; margin-bottom: 10px;"></div>
+                    <div id="rq-warnings" style="color: #d32f2f; margin-bottom: 10px;"></div>
+                    <div id="expand-buttons" style="margin-top: 15px;">
+                        <button class="btn btn-secondary expand-section-btn" data-section="background" style="margin-right: 10px;">Generate Background Information</button>
+                        <button class="btn btn-secondary expand-section-btn" data-section="procedure" style="margin-right: 10px;">Generate Procedure</button>
+                        <button class="btn btn-secondary expand-section-btn" data-section="research_design">Generate Research Design</button>
+                    </div>
+                </div>
+                
+                <!-- Expanded Sections -->
+                <div id="expanded-sections" style="margin-top: 20px;">
+                    <div id="background-section" class="expanded-section" style="display: none; margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 8px;">
+                        <h3 style="margin-top: 0; cursor: pointer;" onclick="toggleSection('background')">Background Information <span class="toggle-icon">▼</span></h3>
+                        <div id="background-content" class="section-content"></div>
+                        <div id="background-citations" class="section-citations" style="margin-top: 10px;"></div>
+                        <button class="btn btn-sm btn-outline-primary retrieve-citations-btn" data-section="background" style="margin-top: 10px;">Retrieve More Citations</button>
+                    </div>
+                    
+                    <div id="procedure-section" class="expanded-section" style="display: none; margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 8px;">
+                        <h3 style="margin-top: 0; cursor: pointer;" onclick="toggleSection('procedure')">Procedure <span class="toggle-icon">▼</span></h3>
+                        <div id="procedure-content" class="section-content"></div>
+                        <div id="procedure-citations" class="section-citations" style="margin-top: 10px;"></div>
+                        <button class="btn btn-sm btn-outline-primary retrieve-citations-btn" data-section="procedure" style="margin-top: 10px;">Retrieve More Citations</button>
+                    </div>
+                    
+                    <div id="research_design-section" class="expanded-section" style="display: none; margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 8px;">
+                        <h3 style="margin-top: 0; cursor: pointer;" onclick="toggleSection('research_design')">Research Design <span class="toggle-icon">▼</span></h3>
+                        <div id="research_design-content" class="section-content"></div>
+                        <div id="research_design-citations" class="section-citations" style="margin-top: 10px;"></div>
+                        <button class="btn btn-sm btn-outline-primary retrieve-citations-btn" data-section="research_design" style="margin-top: 10px;">Retrieve More Citations</button>
+                    </div>
+                </div>
             </div>
             <div class="review-feedback" id="review-feedback" style="display: none;">
                 <div class="review-info">

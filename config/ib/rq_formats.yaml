@@ -1,0 +1,17 @@
+physics_ia:
+  required_elements:
+    - independent_variable
+    - dependent_variable
+    - measurable_quantities
+    - scope_or_range
+  templates:
+    - pattern: "How does {IV} affect {DV} for {range_or_conditions}?"
+      example: "How does the thickness of foam affect sound attenuation at various frequencies?"
+    - pattern: "How does {IV} affect {DV} at {levels}, and how does this compare between {groupA} and {groupB} under {controls}?"
+      example: "How does thickness of EPS and EPE foam affect sound attenuation at various frequencies, and which is more effective?"
+  validation_rules:
+    - must_contain_iv: true
+    - must_contain_dv: true
+    - must_have_units: true
+    - must_have_scope: true
+

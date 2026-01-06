@@ -22,7 +22,13 @@ class MCTSState:
         reward: float = 0,
         retrieved_knowledge: Optional[List[Dict[str, Any]]] = None,
         feedback: Optional[Dict[str, Any]] = None,
-        subject: Optional[str] = None
+        subject: Optional[str] = None,
+        selected_topics: Optional[List[Dict[str, str]]] = None,
+        assessment_type: Optional[str] = None,
+        ia_topic: Optional[str] = None,
+        research_question: Optional[str] = None,
+        expanded_sections: Optional[Dict[str, str]] = None,
+        section_citations: Optional[Dict[str, List[Dict[str, Any]]]] = None
     ):
         self.research_goal = research_goal
         self.current_idea = current_idea or ""
@@ -39,6 +45,13 @@ class MCTSState:
         self.problematic_aspects = []  # Track aspects that have been problematic
         self.action_count = {}  # Count of each action type taken
         self.memory_size = 3  # Keep last 3 items in memory
+        # Physics IA specific fields
+        self.selected_topics = selected_topics or []  # List of selected topics [{"code": "A.1", "name": "Kinematics"}, ...]
+        self.assessment_type = assessment_type  # "IA" or "EE" (default "IA" for Physics)
+        self.ia_topic = ia_topic  # The generated overall IA topic (stage 1 output)
+        self.research_question = research_question  # The hyper-specific RQ (stage 2 output)
+        self.expanded_sections = expanded_sections or {}  # Store expanded sections: {"background": "...", "procedure": "...", "research_design": "..."}
+        self.section_citations = section_citations or {}  # Citations per section: {"background": [...], "procedure": [...], "research_design": [...]}
 
     def __eq__(self, other):
         if isinstance(other, MCTSState):
@@ -95,7 +108,13 @@ class MCTSState:
             "average_score": self.average_score,
             "retrieved_knowledge": self.retrieved_knowledge,
             "feedback": self.feedback,
-            "subject": self.subject
+            "subject": self.subject,
+            "selected_topics": self.selected_topics,
+            "assessment_type": self.assessment_type,
+            "ia_topic": self.ia_topic,
+            "research_question": self.research_question,
+            "expanded_sections": self.expanded_sections,
+            "section_citations": self.section_citations
         }
 
     @classmethod
@@ -108,7 +127,13 @@ class MCTSState:
             reward=data.get("reward", 0),
             retrieved_knowledge=data.get("retrieved_knowledge", []),
             feedback=data.get("feedback", {}),
-            subject=data.get("subject")
+            subject=data.get("subject"),
+            selected_topics=data.get("selected_topics", []),
+            assessment_type=data.get("assessment_type"),
+            ia_topic=data.get("ia_topic"),
+            research_question=data.get("research_question"),
+            expanded_sections=data.get("expanded_sections", {}),
+            section_citations=data.get("section_citations", {})
         )
         # Load additional review data if available
         if "review_scores" in data:

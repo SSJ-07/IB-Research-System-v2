@@ -19,6 +19,8 @@ import uuid
 from src.agents.structured_review import StructuredReviewAgent
 from src.agents.ideation import IdeationAgent
 from src.agents.review import ReviewAgent
+from src.utils.ib_config import load_physics_topics, validate_rq, load_rq_requirements
+from src.agents.prompts import validate_rq_format
 import json
 import re
 import yaml
@@ -2469,6 +2471,340 @@ def handle_stop_exploration():
     global exploration_in_progress
     exploration_in_progress = False
     emit('exploration_stopped')
+
+# Global state for selected topics
+selected_topics_global = []
+
+@app.route("/api/physics/topics", methods=["GET"])
+def get_physics_topics():
+    """Get all Physics topics."""
+    try:
+        topics = load_physics_topics()
+        return jsonify({"topics": topics})
+    except Exception as e:
+        logger.error(f"Error loading physics topics: {str(e)}")
+        return jsonify({"error": f"Failed to load topics: {str(e)}"}), 500
+
+@app.route("/api/topics", methods=["GET", "POST"])
+def handle_topics():
+    """Get or set selected topics."""
+    global selected_topics_global
+    
+    if request.method == "GET":
+        return jsonify({"topics": selected_topics_global})
+    
+    elif request.method == "POST":
+        data = request.get_json()
+        if not data or "topics" not in data:
+            return jsonify({"error": "Missing topics in request"}), 400
+        
+        selected_topics_global = data["topics"]
+        
+        # Update current node state if it exists
+        global current_node
+        if current_node:
+            current_node.state.selected_topics = selected_topics_global
+            if not current_node.state.assessment_type:
+                current_node.state.assessment_type = "IA"
+        
+        return jsonify({"topics": selected_topics_global})
+
+@app.route("/api/generate_rq", methods=["POST"])
+def generate_rq():
+    """Generate hyper-specific RQ from IA topic."""
+    data = request.get_json()
+    
+    if not data or "ia_topic" not in data:
+        return jsonify({"error": "Missing ia_topic in request"}), 400
+    
+    ia_topic = data["ia_topic"]
+    
+    try:
+        global current_node
+        if not current_node:
+            return jsonify({"error": "No current node found"}), 400
+        
+        # Generate RQ using ideation agent
+        response = ideation_agent.execute_action(
+            "generate_rq",
+            {
+                "ia_topic": ia_topic,
+                "current_state": current_node.state,
+                "subject": current_node.state.subject
+            }
+        )
+        
+        rq = response.get("content", "").strip()
+        
+        # Validate RQ format
+        is_valid, warnings, rewritten_rq = validate_rq_format(rq, "physics", "ia")
+        
+        # Update state
+        current_node.state.research_question = rq
+        current_node.state.ia_topic = ia_topic
+        
+        return jsonify({
+            "research_question": rq,
+            "is_valid": is_valid,
+            "warnings": warnings
+        })
+    
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"RQ generation error: {str(e)}\n{error_trace}")
+        return jsonify({"error": f"Failed to generate RQ: {str(e)}"}), 500
+
+def generate_citation_query(section_type: str, ia_topic: str, rq: str) -> str:
+    """Generate ScholarQA query for citation retrieval."""
+    if section_type == "background":
+        return f"Background information and theoretical context for {ia_topic} related to {rq}"
+    elif section_type == "procedure":
+        return f"Experimental procedures and methods for {ia_topic} investigation"
+    elif section_type == "research_design":
+        return f"Research design, equipment specifications, and variable control for {ia_topic}"
+    else:
+        return f"Relevant research papers for {ia_topic} and {rq}"
+
+def retrieve_citations_for_section(query: str):
+    """Retrieve citations using ScholarQA and format them."""
+    try:
+        result = scholar_qa.answer_query(query)
+        citations = []
+        
+        # Extract citations from ScholarQA result
+        sections = result.get("sections", [])
+        for section in sections:
+            section_citations = section.get("citations", [])
+            for citation in section_citations:
+                if isinstance(citation, dict):
+                    paper = citation.get("paper", {})
+                    citation_id = citation.get("id", "")
+                    citations.append({
+                        "id": citation_id,
+                        "author": paper.get("authors", "Unknown"),
+                        "year": paper.get("year", ""),
+                        "title": paper.get("title", ""),
+                        "corpus_id": paper.get("corpus_id", ""),
+                        "citation_count": paper.get("citation_count", 0)
+                    })
+        
+        return citations[:10]  # Limit to 10 citations
+    except Exception as e:
+        logger.error(f"Error retrieving citations: {str(e)}")
+        return []
+
+def format_citation_for_prompt(citation_dict):
+    """Format citation dictionary to [ID | AUTHOR_REF | YEAR | Citations: CITES] format."""
+    author = citation_dict.get("author", "Unknown")
+    year = citation_dict.get("year", "")
+    citation_id = citation_dict.get("id", citation_dict.get("corpus_id", ""))
+    citation_count = citation_dict.get("citation_count", 0)
+    
+    return f"[{citation_id} | {author} | {year} | Citations: {citation_count}]"
+
+@app.route("/api/expand/background", methods=["POST"])
+def expand_background():
+    """Expand Background Information section with citations."""
+    data = request.get_json()
+    
+    if not data or "ia_topic" not in data or "research_question" not in data:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    ia_topic = data["ia_topic"]
+    research_question = data["research_question"]
+    
+    try:
+        global current_node
+        if not current_node:
+            return jsonify({"error": "No current node found"}), 400
+        
+        # Retrieve citations
+        query = generate_citation_query("background", ia_topic, research_question)
+        citations_list = retrieve_citations_for_section(query)
+        citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
+        
+        # Generate section
+        response = ideation_agent.execute_action(
+            "expand_background",
+            {
+                "ia_topic": ia_topic,
+                "research_question": research_question,
+                "citations": citations_str,
+                "current_state": current_node.state,
+                "subject": current_node.state.subject
+            }
+        )
+        
+        content = response.get("content", "")
+        
+        # Update state
+        if not current_node.state.expanded_sections:
+            current_node.state.expanded_sections = {}
+        current_node.state.expanded_sections["background"] = content
+        current_node.state.section_citations["background"] = citations_list
+        
+        return jsonify({
+            "content": content,
+            "citations": citations_list
+        })
+    
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"Background expansion error: {str(e)}\n{error_trace}")
+        return jsonify({"error": f"Failed to expand background: {str(e)}"}), 500
+
+@app.route("/api/expand/procedure", methods=["POST"])
+def expand_procedure():
+    """Expand Procedure section with citations."""
+    data = request.get_json()
+    
+    if not data or "ia_topic" not in data or "research_question" not in data:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    ia_topic = data["ia_topic"]
+    research_question = data["research_question"]
+    
+    try:
+        global current_node
+        if not current_node:
+            return jsonify({"error": "No current node found"}), 400
+        
+        # Retrieve citations
+        query = generate_citation_query("procedure", ia_topic, research_question)
+        citations_list = retrieve_citations_for_section(query)
+        citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
+        
+        # Generate section
+        response = ideation_agent.execute_action(
+            "expand_procedure",
+            {
+                "ia_topic": ia_topic,
+                "research_question": research_question,
+                "citations": citations_str,
+                "current_state": current_node.state,
+                "subject": current_node.state.subject
+            }
+        )
+        
+        content = response.get("content", "")
+        
+        # Update state
+        if not current_node.state.expanded_sections:
+            current_node.state.expanded_sections = {}
+        current_node.state.expanded_sections["procedure"] = content
+        current_node.state.section_citations["procedure"] = citations_list
+        
+        return jsonify({
+            "content": content,
+            "citations": citations_list
+        })
+    
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"Procedure expansion error: {str(e)}\n{error_trace}")
+        return jsonify({"error": f"Failed to expand procedure: {str(e)}"}), 500
+
+@app.route("/api/expand/research_design", methods=["POST"])
+def expand_research_design():
+    """Expand Research Design section with citations."""
+    data = request.get_json()
+    
+    if not data or "ia_topic" not in data or "research_question" not in data:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    ia_topic = data["ia_topic"]
+    research_question = data["research_question"]
+    
+    try:
+        global current_node
+        if not current_node:
+            return jsonify({"error": "No current node found"}), 400
+        
+        # Retrieve citations
+        query = generate_citation_query("research_design", ia_topic, research_question)
+        citations_list = retrieve_citations_for_section(query)
+        citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
+        
+        # Generate section
+        response = ideation_agent.execute_action(
+            "expand_research_design",
+            {
+                "ia_topic": ia_topic,
+                "research_question": research_question,
+                "citations": citations_str,
+                "current_state": current_node.state,
+                "subject": current_node.state.subject
+            }
+        )
+        
+        content = response.get("content", "")
+        
+        # Update state
+        if not current_node.state.expanded_sections:
+            current_node.state.expanded_sections = {}
+        current_node.state.expanded_sections["research_design"] = content
+        current_node.state.section_citations["research_design"] = citations_list
+        
+        return jsonify({
+            "content": content,
+            "citations": citations_list
+        })
+    
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"Research design expansion error: {str(e)}\n{error_trace}")
+        return jsonify({"error": f"Failed to expand research design: {str(e)}"}), 500
+
+@app.route("/api/citations/add", methods=["POST"])
+def add_citation():
+    """Manually add citation to a section."""
+    data = request.get_json()
+    
+    if not data or "section" not in data or "citation" not in data:
+        return jsonify({"error": "Missing section or citation"}), 400
+    
+    section = data["section"]
+    citation = data["citation"]
+    
+    try:
+        global current_node
+        if not current_node:
+            return jsonify({"error": "No current node found"}), 400
+        
+        if not current_node.state.section_citations:
+            current_node.state.section_citations = {}
+        if section not in current_node.state.section_citations:
+            current_node.state.section_citations[section] = []
+        
+        current_node.state.section_citations[section].append(citation)
+        
+        return jsonify({"success": True, "citations": current_node.state.section_citations[section]})
+    
+    except Exception as e:
+        logger.error(f"Error adding citation: {str(e)}")
+        return jsonify({"error": f"Failed to add citation: {str(e)}"}), 500
+
+@app.route("/api/citations/retrieve", methods=["POST"])
+def retrieve_citations():
+    """Auto-retrieve citations for a section using ScholarQA."""
+    data = request.get_json()
+    
+    if not data or "section" not in data or "ia_topic" not in data or "research_question" not in data:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    section = data["section"]
+    ia_topic = data["ia_topic"]
+    research_question = data["research_question"]
+    
+    try:
+        query = generate_citation_query(section, ia_topic, research_question)
+        citations_list = retrieve_citations_for_section(query)
+        
+        return jsonify({"citations": citations_list})
+    
+    except Exception as e:
+        logger.error(f"Error retrieving citations: {str(e)}")
+        return jsonify({"error": f"Failed to retrieve citations: {str(e)}"}), 500
 
 @app.route("/api/set_aspect_weights", methods=["POST"])
 def set_aspect_weights():

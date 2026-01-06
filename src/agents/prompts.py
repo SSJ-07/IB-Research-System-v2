@@ -1,5 +1,8 @@
 """Prompt templates for IRIS agents."""
 
+from typing import Dict, List, Optional, Tuple
+from src.utils.ib_config import validate_rq, load_rq_requirements
+
 # Ideation Agent Prompts
 IDEATION_SYSTEM_PROMPT = """You are an expert scientific research ideation assistant. Your goal is to help researchers generate and refine creative, novel research ideas. 
 You should offer detailed, well-structured responses and always aim for scientific rigor.
@@ -667,15 +670,15 @@ Always provide your reviews in the exact JSON format requested, with scores and 
 Pay special attention to experimental design, measurement techniques, data analysis, uncertainty calculations, and safety considerations.
 """
 
-UNIFIED_REVIEW_PROMPT_PHYSICS = """Evaluate the following physics research idea across exactly five specific aspects:
+UNIFIED_REVIEW_PROMPT_PHYSICS = """Evaluate the following physics research idea across exactly five specific aspects aligned with IBDP Physics IA criteria:
 {research_idea}
 
-Provide a detailed review for each of these five aspects:
-1. Novelty: Originality and innovation compared to existing work
-2. Clarity: How well-defined and understandable the idea is
-3. Feasibility: Technical practicality within current capabilities and school laboratory constraints
-4. Effectiveness: How well the proposed experimental approach might answer the stated research question
-5. Impact: Potential scientific and practical significance if successful
+Provide a detailed review for each of these five aspects (mapped to IA criteria):
+1. RQ & Design Fit: How well the research question aligns with the experimental design and maps to the Research Design criterion. Does the RQ have clear IV, DV, and scope? Is the design appropriate to answer the RQ?
+2. Data/Analysis Viability: Quality of data collection plan and analysis methods, mapping to the Data Analysis criterion. Are measurements appropriate? Is the analysis plan sound?
+3. Conclusion Traceability: Can the experimental design produce evidence sufficient for a meaningful conclusion? Will the data allow for clear conclusions?
+4. Evaluation Potential: Can meaningful limitations and improvements be identified? Does the design allow for critical evaluation?
+5. Safety & Practicality: Feasibility for school laboratory setting, safety considerations, and practical constraints. Is it safe and achievable?
 
 Additionally, consider these physics-specific aspects (provide as extra_scores):
 - Experimental Rigor: Quality of experimental design, measurement techniques, and data collection methods
@@ -688,18 +691,18 @@ For each core aspect, provide:
 Return your review in a JSON format with the following structure:
 {{
   "reviews": {{
-    "novelty": "Your detailed assessment of novelty",
-    "clarity": "Your detailed assessment of clarity",
-    "feasibility": "Your detailed assessment of feasibility",
-    "effectiveness": "Your detailed assessment of effectiveness",
-    "impact": "Your detailed assessment of impact"
+    "rq_design_fit": "Your detailed assessment of RQ & Design Fit",
+    "data_analysis_viability": "Your detailed assessment of Data/Analysis Viability",
+    "conclusion_traceability": "Your detailed assessment of Conclusion Traceability",
+    "evaluation_potential": "Your detailed assessment of Evaluation Potential",
+    "safety_practicality": "Your detailed assessment of Safety & Practicality"
   }},
   "scores": {{
-    "novelty": <score>,
-    "clarity": <score>,
-    "feasibility": <score>,
-    "effectiveness": <score>,
-    "impact": <score>
+    "rq_design_fit": <score>,
+    "data_analysis_viability": <score>,
+    "conclusion_traceability": <score>,
+    "evaluation_potential": <score>,
+    "safety_practicality": <score>
   }},
   "extra_scores": {{
     "experimental_rigor": <score>,
@@ -707,9 +710,181 @@ Return your review in a JSON format with the following structure:
   }}
 }}
 
-Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea, with special attention to experimental design, measurement techniques, and data analysis methods.
+Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea, with special attention to experimental design, measurement techniques, and data analysis methods aligned with IBDP Physics IA assessment criteria.
 Ensure all scores are integers or decimals between 1 and 10, and that you include reviews for all five core aspects.
 """
+
+# ============================================================================
+# Physics IA-Specific Prompts (for IBDP Physics Internal Assessment)
+# ============================================================================
+
+IDEATION_IA_TOPIC_PROMPT_PHYSICS = """Act as an experienced physics researcher specializing in IBDP Physics Internal Assessments. Your task is to generate an overall IA topic that combines concepts from multiple selected Physics topics.
+
+SELECTED PHYSICS TOPICS:
+{selected_topics}
+
+RESEARCH GOAL (optional):
+{research_goal}
+
+Your task is to generate **one** coherent and feasible Physics IA topic that:
+1. Combines concepts from ALL selected topics into a unified investigation
+2. Is appropriate for high school level experimental physics
+3. Can be conducted in a school laboratory setting
+4. Has clear experimental methodology
+5. Is novel and interesting
+
+The topic should be described as a comprehensive research brief that includes:
+- A clear description of the overall investigation area
+- How the selected topics relate to each other in this investigation
+- The general experimental approach
+- Why this topic is interesting and feasible for an IA
+
+Return your response as a structured text (not JSON) that reads like a research brief. Include:
+- **Topic Overview**: A 2-3 sentence description of the overall investigation
+- **Topic Integration**: How the selected topics connect in this investigation
+- **Experimental Approach**: General methodology and measurement techniques
+- **Feasibility**: Why this is suitable for a school laboratory IA
+
+Format your response using clear markdown sections. Do not use JSON format - write as a natural research brief.
+"""
+
+IDEATION_RQ_PROMPT_PHYSICS = """Act as an experienced physics researcher specializing in IBDP Physics Internal Assessments. Your task is to generate a hyper-specific research question (RQ) in proper IB format from the given IA topic.
+
+IA TOPIC:
+{ia_topic}
+
+RQ FORMAT REQUIREMENTS:
+- Must clearly identify an independent variable (IV) with units
+- Must clearly identify a dependent variable (DV) with units
+- Must specify measurable quantities
+- Must include scope or range of investigation
+- Should follow the pattern: "How does {IV} affect {DV} for {range_or_conditions}?"
+
+RQ TEMPLATES:
+- "How does {IV} affect {DV} for {range_or_conditions}?"
+  Example: "How does the thickness of foam affect sound attenuation at various frequencies?"
+- "How does {IV} affect {DV} at {levels}, and how does this compare between {groupA} and {groupB} under {controls}?"
+  Example: "How does thickness of EPS and EPE foam affect sound attenuation at various frequencies, and which is more effective?"
+
+Your task:
+1. Generate a hyper-specific RQ that follows IB format requirements
+2. Ensure the RQ includes IV, DV, units, and scope
+3. Make it specific enough to guide a focused experimental investigation
+4. Ensure it is measurable and feasible for school laboratory
+
+If the generated RQ does not meet all requirements, rewrite it to include:
+- Explicit independent variable with units
+- Explicit dependent variable with units
+- Clear scope/range of investigation
+- Measurable quantities
+
+Return ONLY the research question as a single sentence. Do not include any additional text or explanation.
+"""
+
+IB_BACKGROUND_PROMPT_PHYSICS = """You are writing the Background Information section for an IBDP Physics Internal Assessment.
+
+IA TOPIC:
+{ia_topic}
+
+RESEARCH QUESTION:
+{research_question}
+
+RETRIEVED CITATIONS (optional):
+{citations}
+
+Your task is to write a Background Information section (2-3 paragraphs) that includes:
+1. Scientific context and theoretical background relevant to the investigation
+2. Personal interest or motivation for choosing this topic
+3. Significance of the investigation
+
+CITATION FORMAT:
+- Use inline citations in the format: [ID | AUTHOR_REF | YEAR | Citations: CITES]
+- Citations should follow the text they support
+- You can cite multiple sources in a single sentence if appropriate
+- If citations are provided, use them where relevant. If not provided, you may cite as [LLM MEMORY | 2024] for general knowledge
+
+Write the Background Information section using markdown formatting. Include citations inline where appropriate. The section should be 2-3 paragraphs and provide context for why this investigation is interesting and scientifically relevant.
+"""
+
+IB_PROCEDURE_PROMPT_PHYSICS = """You are writing the Procedure section for an IBDP Physics Internal Assessment.
+
+IA TOPIC:
+{ia_topic}
+
+RESEARCH QUESTION:
+{research_question}
+
+RETRIEVED CITATIONS (optional):
+{citations}
+
+Your task is to write a detailed Procedure section in IB style that includes:
+1. Step-by-step experimental procedure
+2. Clear instructions for data collection
+3. Safety considerations
+4. Equipment setup and configuration
+
+CITATION FORMAT:
+- Use inline citations in the format: [ID | AUTHOR_REF | YEAR | Citations: CITES] where citing established methods or techniques
+- Citations should follow the text they support
+- If citations are provided, use them where relevant. If not provided, you may cite as [LLM MEMORY | 2024] for standard experimental methods
+
+Write the Procedure section using markdown formatting with clear numbered steps. Include citations where appropriate for established methods or techniques. The procedure should be detailed enough for another student to replicate the experiment.
+"""
+
+IB_RESEARCH_DESIGN_PROMPT_PHYSICS = """You are writing the Research Design section for an IBDP Physics Internal Assessment.
+
+IA TOPIC:
+{ia_topic}
+
+RESEARCH QUESTION:
+{research_question}
+
+RETRIEVED CITATIONS (optional):
+{citations}
+
+Your task is to write a Research Design section that includes:
+1. **Materials/Equipment List**: Complete list of all equipment and materials needed with specifications
+2. **Variables Table**: Detailed table with:
+   - Independent Variable (IV): Name, units, levels/range, how it's measured
+   - Dependent Variable (DV): Name, units, how it's measured
+   - Controlled Variables: For each control variable, include:
+     * Name
+     * How it's controlled (method)
+     * Why it's controlled (reason)
+
+CITATION FORMAT:
+- Use inline citations in the format: [ID | AUTHOR_REF | YEAR | Citations: CITES] where citing equipment specifications or established measurement techniques
+- Citations should follow the text they support
+- If citations are provided, use them where relevant. If not provided, you may cite as [LLM MEMORY | 2024] for standard equipment or methods
+
+Write the Research Design section using markdown formatting. Include a clear materials list and a detailed variables table. Include citations where appropriate for equipment specifications or measurement techniques.
+"""
+
+
+def validate_rq_format(rq: str, subject: str = "physics", assessment_type: str = "ia") -> Tuple[bool, List[str], Optional[str]]:
+    """Validate a research question format and attempt auto-rewrite if invalid.
+    
+    Args:
+        rq: Research question string to validate
+        subject: Subject name (default "physics")
+        assessment_type: Assessment type (default "ia")
+        
+    Returns:
+        Tuple of (is_valid, warnings, rewritten_rq)
+        - is_valid: True if RQ meets all requirements
+        - warnings: List of warning messages if invalid
+        - rewritten_rq: Auto-rewritten RQ if invalid, None if valid or rewrite failed
+    """
+    requirements = load_rq_requirements(subject, assessment_type)
+    is_valid, warnings = validate_rq(rq, requirements)
+    
+    rewritten_rq = None
+    if not is_valid:
+        # Attempt auto-rewrite by adding missing elements
+        # This is a simple heuristic - in practice, LLM would do better rewriting
+        rewritten_rq = rq  # For now, return original (LLM will handle rewriting in prompt)
+    
+    return is_valid, warnings, rewritten_rq
 
 # ============================================================================
 # Chemistry-Specific Prompts (for IBDP Chemistry research papers)
@@ -990,6 +1165,11 @@ PROMPT_BUNDLES: Dict[str, Dict[str, str]] = {
     "physics": {
         "system": IDEATION_SYSTEM_PROMPT_PHYSICS,
         "generate": IDEATION_GENERATE_PROMPT_PHYSICS,
+        "generate_ia_topic": IDEATION_IA_TOPIC_PROMPT_PHYSICS,
+        "generate_rq": IDEATION_RQ_PROMPT_PHYSICS,
+        "expand_background": IB_BACKGROUND_PROMPT_PHYSICS,
+        "expand_procedure": IB_PROCEDURE_PROMPT_PHYSICS,
+        "expand_research_design": IB_RESEARCH_DESIGN_PROMPT_PHYSICS,
         "refresh": IDEATION_REFRESH_APPROACH_PROMPT_PHYSICS,
         "refine_with_retrieval": IDEATION_REFINE_WITH_RETRIEVAL_PROMPT_PHYSICS,
         "direct_feedback": IDEATION_DIRECT_FEEDBACK_PROMPT_PHYSICS,

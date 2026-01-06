@@ -32,8 +32,8 @@ let current_root = null; // Initialize current_root
 // Define main_idea as a global variable to store the current idea
 let main_idea = "";
 
-// Store selected subject
-let selectedSubject = null;
+// Store selected subject (default to physics for Physics IA flow)
+let selectedSubject = 'physics';
 
 // Add this near the top of the file to ensure our function is available globally
 let toggleFromAutoGenerate; 
@@ -43,16 +43,21 @@ $(document).ready(function () {
     loadChat();
     loadIdea(true); // Initial load, don't overwrite highlights
     
-    // Load subject selection
-    loadSubject();
-    
-    // Setup subject selector change handler
-    $('#subject-selector').on('change', function() {
+    // Initialize subject selector
+    $('#subject-select').on('change', function() {
         const subject = $(this).val();
-        selectedSubject = subject || null;
-        updateSubjectBadge(subject);
+        selectedSubject = subject;
         saveSubject(subject);
+        updateSubjectUI(subject);
     });
+    
+    // Initialize physics topic selector
+    $('#physics-topic-select').on('change', function() {
+        updateSelectedTopics();
+    });
+    
+    // Load saved subject on page load
+    loadSubject();
 
     // Polling removed - loadIdea should only be called when idea is actually updated
     // (e.g., after generation, refresh, or node selection)
@@ -318,13 +323,33 @@ function loadSubject() {
         .done(function(data) {
             if (data.subject) {
                 selectedSubject = data.subject;
-                $('#subject-selector').val(data.subject);
-                updateSubjectBadge(data.subject);
+                $('#subject-select').val(data.subject);
+                updateSubjectUI(data.subject);
             }
         })
         .fail(function() {
             console.error('Failed to load subject');
         });
+}
+
+function updateSubjectUI(subject) {
+    // Update placeholder text based on subject
+    const placeholder = subject === 'physics' 
+        ? 'Enter your Physics research goal...'
+        : subject === 'chemistry'
+        ? 'Enter your Chemistry research goal...'
+        : 'Enter your research goal to begin...';
+    $('#chat-input').attr('placeholder', placeholder);
+    
+    // Show/hide physics topic dropdown
+    if (subject === 'physics') {
+        $('#physics-topic-select').show();
+        loadPhysicsTopics();
+    } else {
+        $('#physics-topic-select').hide();
+        $('#physics-topic-select').val('');
+        selectedTopics = [];
+    }
 }
 
 function saveSubject(subject) {
@@ -343,22 +368,248 @@ function saveSubject(subject) {
 }
 
 function updateSubjectBadge(subject) {
-    const badge = $('#subject-badge');
-    if (subject) {
-        const subjectName = subject.charAt(0).toUpperCase() + subject.slice(1);
-        badge.text(subjectName).show();
-        
-        // Update placeholder text based on subject
-        const placeholder = subject === 'physics' 
-            ? 'Enter your Physics research topic...'
-            : subject === 'chemistry'
-            ? 'Enter your Chemistry research topic...'
-            : 'Enter your research goal to begin...';
-        $('#chat-input').attr('placeholder', placeholder);
+    // Legacy function - kept for compatibility
+    updateSubjectUI(subject);
+}
+
+function updateSubjectUI(subject) {
+    // Update placeholder text based on subject
+    const placeholder = subject === 'physics' 
+        ? 'Enter your Physics research goal...'
+        : subject === 'chemistry'
+        ? 'Enter your Chemistry research goal...'
+        : 'Enter your research goal to begin...';
+    $('#chat-input').attr('placeholder', placeholder);
+    
+    // Show/hide physics topic dropdown
+    if (subject === 'physics') {
+        $('#physics-topic-select').show();
+        loadPhysicsTopics();
     } else {
-        badge.hide();
-        $('#chat-input').attr('placeholder', 'Enter your research goal to begin...');
+        $('#physics-topic-select').hide();
+        $('#physics-topic-select').val('');
+        selectedTopics = [];
     }
+}
+
+// Physics IA Functions
+let selectedTopics = [];
+
+function loadPhysicsTopics() {
+    $.get('/api/physics/topics', function(data) {
+        const topics = data.topics || [];
+        const topicSelect = $('#physics-topic-select');
+        topicSelect.empty();
+        topicSelect.append('<option value="">Select Topic</option>');
+        
+        // Group topics by category for optgroup organization
+        const topicsByCategory = {};
+        topics.forEach(topic => {
+            const category = topic.category || 'Other';
+            if (!topicsByCategory[category]) {
+                topicsByCategory[category] = [];
+            }
+            topicsByCategory[category].push(topic);
+        });
+        
+        // Create optgroups for better organization
+        Object.keys(topicsByCategory).sort().forEach(category => {
+            const optgroup = $('<optgroup>').attr('label', category);
+            
+            topicsByCategory[category].forEach(topic => {
+                const option = $('<option>')
+                    .attr('value', JSON.stringify(topic))
+                    .text(`${topic.code}: ${topic.name}`);
+                optgroup.append(option);
+            });
+            
+            topicSelect.append(optgroup);
+        });
+    });
+}
+
+function updateSelectedTopics() {
+    const selectedTopicValue = $('#physics-topic-select').val();
+    selectedTopics = [];
+    
+    if (selectedTopicValue) {
+        try {
+            selectedTopics.push(JSON.parse(selectedTopicValue));
+        } catch (e) {
+            console.error('Error parsing topic:', e);
+        }
+    }
+    
+    // Save selected topics
+    if (selectedTopics.length > 0) {
+        $.ajax({
+            url: '/api/topics',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ topics: selectedTopics }),
+            success: function(data) {
+                console.log('Topics saved:', data.topics);
+            }
+        });
+    }
+}
+
+function generateIATopic() {
+    if (selectedTopics.length === 0) {
+        alert('Please select at least one Physics topic');
+        return;
+    }
+    
+    const researchGoal = $('#chat-input').val() || '';
+    
+    $.ajax({
+        url: '/api/step',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            action: 'generate_ia_topic',
+            research_goal: researchGoal,
+            use_mcts: false
+        }),
+        success: function(data) {
+            if (data.idea) {
+                displayIATopic(data.idea);
+            }
+        },
+        error: function(xhr) {
+            console.error('Error generating IA topic:', xhr);
+            alert('Error generating IA topic. Please try again.');
+        }
+    });
+}
+
+function displayIATopic(content) {
+    $('#ia-topic-content').html(formatMessage(content));
+    $('#ia-topic-display').show();
+    $('#physics-ia-sections').show();
+    $('#generate-rq-btn').show();
+}
+
+function generateRQ() {
+    const iaTopic = $('#ia-topic-content').text();
+    
+    $.ajax({
+        url: '/api/generate_rq',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ ia_topic: iaTopic }),
+        success: function(data) {
+            displayRQ(data.research_question, data.warnings || []);
+        },
+        error: function(xhr) {
+            console.error('Error generating RQ:', xhr);
+            alert('Error generating Research Question. Please try again.');
+        }
+    });
+}
+
+function displayRQ(rq, warnings) {
+    $('#rq-content').text(rq);
+    $('#rq-display').show();
+    
+    if (warnings.length > 0) {
+        $('#rq-warnings').html('<strong>Warnings:</strong><ul>' + 
+            warnings.map(w => `<li>${w}</li>`).join('') + '</ul>');
+    } else {
+        $('#rq-warnings').empty();
+    }
+}
+
+function expandSection(section) {
+    const iaTopic = $('#ia-topic-content').text();
+    const rq = $('#rq-content').text();
+    
+    $.ajax({
+        url: `/api/expand/${section}`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            ia_topic: iaTopic,
+            research_question: rq
+        }),
+        success: function(data) {
+            displayExpandedSection(section, data.content, data.citations || []);
+        },
+        error: function(xhr) {
+            console.error(`Error expanding ${section}:`, xhr);
+            alert(`Error expanding ${section}. Please try again.`);
+        }
+    });
+}
+
+function displayExpandedSection(section, content, citations) {
+    $(`#${section}-section`).show();
+    $(`#${section}-content`).html(formatMessage(content));
+    
+    // Display citations
+    if (citations.length > 0) {
+        const citationsHtml = citations.map(c => {
+            const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
+            return `<div style="margin: 5px 0; padding: 5px; background: #f0f0f0; border-radius: 4px;">${citationStr}</div>`;
+        }).join('');
+        $(`#${section}-citations`).html('<strong>Citations:</strong>' + citationsHtml);
+    }
+}
+
+function toggleSection(section) {
+    const content = $(`#${section}-content`);
+    const icon = $(`#${section}-section h3 .toggle-icon`);
+    if (content.is(':visible')) {
+        content.slideUp();
+        icon.text('▶');
+    } else {
+        content.slideDown();
+        icon.text('▼');
+    }
+}
+
+// Event handlers
+$(document).ready(function() {
+    $('#generate-rq-btn').on('click', generateRQ);
+    $('.expand-section-btn').on('click', function() {
+        const section = $(this).data('section');
+        expandSection(section);
+    });
+    $('.retrieve-citations-btn').on('click', function() {
+        const section = $(this).data('section');
+        retrieveCitations(section);
+    });
+});
+
+function retrieveCitations(section) {
+    const iaTopic = $('#ia-topic-content').text();
+    const rq = $('#rq-content').text();
+    
+    $.ajax({
+        url: '/api/citations/retrieve',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            section: section,
+            ia_topic: iaTopic,
+            research_question: rq
+        }),
+        success: function(data) {
+            // Append new citations
+            const existingCitations = $(`#${section}-citations`).data('citations') || [];
+            const allCitations = [...existingCitations, ...(data.citations || [])];
+            $(`#${section}-citations`).data('citations', allCitations);
+            
+            const citationsHtml = allCitations.map(c => {
+                const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
+                return `<div style="margin: 5px 0; padding: 5px; background: #f0f0f0; border-radius: 4px;">${citationStr}</div>`;
+            }).join('');
+            $(`#${section}-citations`).html('<strong>Citations:</strong>' + citationsHtml);
+        },
+        error: function(xhr) {
+            console.error(`Error retrieving citations for ${section}:`, xhr);
+        }
+    });
 }
 
 function loadChat() {

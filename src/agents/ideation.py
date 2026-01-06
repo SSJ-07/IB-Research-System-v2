@@ -386,14 +386,74 @@ class IdeationAgent(BaseAgent):
         # Get subject from state for prompt bundle selection
         subject = state.get("subject") or (getattr(state.get("current_state"), "subject", None) if state.get("current_state") else None)
         prompts = get_prompts_for_subject(subject)
+        
+        # Get assessment_type and check if we should use Physics IA flow
+        current_state = state.get("current_state")
+        assessment_type = None
+        selected_topics = []
+        if current_state:
+            assessment_type = getattr(current_state, "assessment_type", None)
+            selected_topics = getattr(current_state, "selected_topics", [])
+        assessment_type = assessment_type or state.get("assessment_type")
 
         if action == "generate":
-            # Add memory context to avoid redundancy
-            memory_context = self.get_memory_context()
-            prompt = prompts["generate"].format(research_topic=research_goal or current_idea, abstract_section=abstract)
-            if memory_context:
-                prompt += f"\n\nMemory context (avoid these approaches):\n{memory_context}"
-            return prompt
+            # Check if Physics IA flow should be used
+            if subject == "physics" and assessment_type == "IA" and selected_topics:
+                # Use generate_ia_topic prompt instead
+                topics_str = "\n".join([f"- {t.get('code', '')}: {t.get('name', '')}" for t in selected_topics])
+                prompt = prompts.get("generate_ia_topic", prompts["generate"]).format(
+                    selected_topics=topics_str,
+                    research_goal=research_goal or ""
+                )
+                return prompt
+            else:
+                # Add memory context to avoid redundancy
+                memory_context = self.get_memory_context()
+                prompt = prompts["generate"].format(research_topic=research_goal or current_idea, abstract_section=abstract)
+                if memory_context:
+                    prompt += f"\n\nMemory context (avoid these approaches):\n{memory_context}"
+                return prompt
+        
+        elif action == "generate_ia_topic":
+            topics_str = "\n".join([f"- {t.get('code', '')}: {t.get('name', '')}" for t in selected_topics])
+            return prompts.get("generate_ia_topic", prompts["generate"]).format(
+                selected_topics=topics_str,
+                research_goal=research_goal or ""
+            )
+        
+        elif action == "generate_rq":
+            ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)
+            return prompts.get("generate_rq", "").format(ia_topic=ia_topic or "")
+        
+        elif action == "expand_background":
+            ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)
+            research_question = state.get("research_question") or (getattr(current_state, "research_question", None) if current_state else None)
+            citations = state.get("citations", "")
+            return prompts.get("expand_background", "").format(
+                ia_topic=ia_topic or "",
+                research_question=research_question or "",
+                citations=citations
+            )
+        
+        elif action == "expand_procedure":
+            ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)
+            research_question = state.get("research_question") or (getattr(current_state, "research_question", None) if current_state else None)
+            citations = state.get("citations", "")
+            return prompts.get("expand_procedure", "").format(
+                ia_topic=ia_topic or "",
+                research_question=research_question or "",
+                citations=citations
+            )
+        
+        elif action == "expand_research_design":
+            ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)
+            research_question = state.get("research_question") or (getattr(current_state, "research_question", None) if current_state else None)
+            citations = state.get("citations", "")
+            return prompts.get("expand_research_design", "").format(
+                ia_topic=ia_topic or "",
+                research_question=research_question or "",
+                citations=citations
+            )
         
         elif action == "generate_query":
             # Add memory context to avoid redundant queries
