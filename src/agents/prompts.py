@@ -435,7 +435,7 @@ For each aspect, provide:
 - A score from 1-10 (where 10 is best)
 - A brief, specific review of the idea's strengths and weaknesses for this aspect
 
-Return your review in a JSON format with the following structure:
+IMPORTANT: You MUST return your review in valid JSON format with the following exact structure:
 {{
   "reviews": {{
     "novelty": "Your detailed assessment of novelty",
@@ -445,16 +445,23 @@ Return your review in a JSON format with the following structure:
     "impact": "Your detailed assessment of impact"
   }},
   "scores": {{
-    "novelty": <score>,
-    "clarity": <score>,
-    "feasibility": <score>,
-    "effectiveness": <score>,
-    "impact": <score>
+    "novelty": <number>,
+    "clarity": <number>,
+    "feasibility": <number>,
+    "effectiveness": <number>,
+    "impact": <number>
   }}
 }}
 
+CRITICAL REQUIREMENTS:
+- The response MUST be valid JSON that can be parsed by a JSON parser
+- All scores must be numbers (integers or decimals), NOT strings
+- All five aspects must be included in both "reviews" and "scores"
+- Scores must be between 1 and 10
+- Do not include any text outside the JSON structure
+- Use double quotes for all JSON keys and string values
+
 Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea.
-Ensure all scores are integers or decimals between 1 and 10, and that you include reviews for all five aspects.
 """
 
 # ============================================================================
@@ -688,7 +695,7 @@ For each core aspect, provide:
 - A score from 1-10 (where 10 is best)
 - A brief, specific review of the idea's strengths and weaknesses for this aspect
 
-Return your review in a JSON format with the following structure:
+IMPORTANT: You MUST return your review in valid JSON format with the following exact structure:
 {{
   "reviews": {{
     "rq_design_fit": "Your detailed assessment of RQ & Design Fit",
@@ -698,17 +705,25 @@ Return your review in a JSON format with the following structure:
     "safety_practicality": "Your detailed assessment of Safety & Practicality"
   }},
   "scores": {{
-    "rq_design_fit": <score>,
-    "data_analysis_viability": <score>,
-    "conclusion_traceability": <score>,
-    "evaluation_potential": <score>,
-    "safety_practicality": <score>
+    "rq_design_fit": <number>,
+    "data_analysis_viability": <number>,
+    "conclusion_traceability": <number>,
+    "evaluation_potential": <number>,
+    "safety_practicality": <number>
   }},
   "extra_scores": {{
-    "experimental_rigor": <score>,
-    "safety": <score>
+    "experimental_rigor": <number>,
+    "safety": <number>
   }}
 }}
+
+CRITICAL REQUIREMENTS:
+- The response MUST be valid JSON that can be parsed by a JSON parser
+- All scores must be numbers (integers or decimals), NOT strings
+- All five core aspects must be included in both "reviews" and "scores"
+- Scores must be between 1 and 10
+- Do not include any text outside the JSON structure
+- Use double quotes for all JSON keys and string values
 
 Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea, with special attention to experimental design, measurement techniques, and data analysis methods aligned with IBDP Physics IA assessment criteria.
 Ensure all scores are integers or decimals between 1 and 10, and that you include reviews for all five core aspects.

@@ -517,15 +517,22 @@ def chat():
                 
                 # Get review using the unified review method
                 review_data = review_agent.unified_review(llm_response, subject=selected_subject)
-                print(f"Review score: {review_data['average_score']}")
+                avg_score = review_data.get("average_score") if review_data else None
+                if avg_score is not None:
+                    print(f"Review score: {avg_score}")
+                else:
+                    logger.warning(f"Review returned None average_score for initial idea generation (subject: {selected_subject})")
                 if review_data:
                     if "scores" in review_data:
                         first_idea_state.review_scores = review_data["scores"]
                     if "reviews" in review_data:
                         first_idea_state.review_feedback = review_data["reviews"]
-                    if "average_score" in review_data:
-                        first_idea_state.average_score = review_data["average_score"]
-                        first_idea_state.reward = review_data["average_score"]
+                    if avg_score is not None:
+                        first_idea_state.average_score = avg_score
+                        first_idea_state.reward = avg_score
+                    else:
+                        first_idea_state.average_score = 0.0
+                        first_idea_state.reward = 0.0
                 
                 # Add the first generated idea as a child of the root node
                 first_idea_node = current_root.add_child(first_idea_state, "generate")
@@ -571,15 +578,22 @@ def chat():
                 
                 # Get review using the unified review method
                 review_data = review_agent.unified_review(improved_content, subject=subject_from_state)
-                print(f"Review score: {review_data['average_score']}")
+                avg_score = review_data.get("average_score") if review_data else None
+                if avg_score is not None:
+                    print(f"Review score: {avg_score}")
+                else:
+                    logger.warning(f"Review returned None average_score for feedback improvement (subject: {subject_from_state})")
                 if review_data:
                     if "scores" in review_data:
                         new_state.review_scores = review_data["scores"]
                     if "reviews" in review_data:
                         new_state.review_feedback = review_data["reviews"]
-                    if "average_score" in review_data:
-                        new_state.average_score = review_data["average_score"]
-                        new_state.reward = review_data["average_score"]
+                    if avg_score is not None:
+                        new_state.average_score = avg_score
+                        new_state.reward = avg_score
+                    else:
+                        new_state.average_score = 0.0
+                        new_state.reward = 0.0
                 
                 # Create new node and add as child of current node
                 new_node = current_node.add_child(new_state, "direct_feedback")
@@ -1028,11 +1042,15 @@ def step():
                     current_node.state.review_scores = review_data["scores"]
                 if "reviews" in review_data:
                     current_node.state.review_feedback = review_data["reviews"]
-                if "average_score" in review_data:
-                    current_node.state.average_score = review_data["average_score"]
+                avg_score = review_data.get("average_score")
+                if avg_score is not None:
+                    current_node.state.average_score = avg_score
+                else:
+                    logger.warning(f"Review returned None average_score for judge action (subject: {subject_from_state})")
+                    current_node.state.average_score = 0.0
             
             # Add system message with review summary
-            avg_score = review_data.get("average_score", 0)
+            avg_score = review_data.get("average_score") if review_data else 0
             chat_messages.append({
                 "role": "system", 
                 "content": f"Review complete. Overall score: {avg_score:.1f}/10"
@@ -1207,12 +1225,19 @@ def step():
             retrieval_state.current_idea = improvement_response["content"]
             
             # Step 4: Get new review scores for the improved idea
-            new_review = review_agent.unified_review(retrieval_state.current_idea)
+            subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
+            new_review = review_agent.unified_review(retrieval_state.current_idea, subject=subject_from_state)
             if new_review:
-                retrieval_state.review_scores = new_review.get("scores", {})
-                retrieval_state.review_feedback = new_review.get("reviews", {})
-                retrieval_state.average_score = new_review.get("average_score", 0.0)
-                retrieval_state.reward = new_review.get("average_score", 0.0) / 10
+                avg_score = new_review.get("average_score")
+                if avg_score is not None:
+                    retrieval_state.review_scores = new_review.get("scores", {})
+                    retrieval_state.review_feedback = new_review.get("reviews", {})
+                    retrieval_state.average_score = avg_score
+                    retrieval_state.reward = avg_score / 10
+                else:
+                    logger.warning(f"Review returned None average_score for retrieve_and_refine action")
+                    retrieval_state.average_score = 0.0
+                    retrieval_state.reward = 0.0
             
             # Create new node and update current
             new_node = current_node.add_child(retrieval_state, action)
@@ -1253,12 +1278,19 @@ def step():
                 )
             
             # Get new review scores
-            new_review = review_agent.unified_review(refresh_state.current_idea)
+            subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
+            new_review = review_agent.unified_review(refresh_state.current_idea, subject=subject_from_state)
             if new_review:
-                refresh_state.review_scores = new_review.get("scores", {})
-                refresh_state.review_feedback = new_review.get("reviews", {})
-                refresh_state.average_score = new_review.get("average_score", 0.0)
-                refresh_state.reward = new_review.get("average_score", 0.0) / 10
+                avg_score = new_review.get("average_score")
+                if avg_score is not None:
+                    refresh_state.review_scores = new_review.get("scores", {})
+                    refresh_state.review_feedback = new_review.get("reviews", {})
+                    refresh_state.average_score = avg_score
+                    refresh_state.reward = avg_score / 10
+                else:
+                    logger.warning(f"Review returned None average_score for refresh_idea action")
+                    refresh_state.average_score = 0.0
+                    refresh_state.reward = 0.0
             
             # FIXED: Create new node as child of current node's PARENT (sibling relationship)
             if current_node.parent is not None:
@@ -1353,11 +1385,23 @@ def execute_mcts_action(state, action):
         if action == "review_and_refine":
             # Get current reviews if not available
             if not hasattr(state, "review_scores") or not state.review_scores:
-                review_data = review_agent.unified_review(state.current_idea)
+                # Get subject from state or global selected_subject
+                subject_from_state = getattr(state, "subject", None) or selected_subject
+                if not subject_from_state:
+                    logger.warning(f"No subject found in state for review_and_refine action, review may use default prompts")
+                
+                review_data = review_agent.unified_review(state.current_idea, subject=subject_from_state)
                 if review_data:
-                    state.review_scores = review_data.get("scores", {})
-                    state.review_feedback = review_data.get("reviews", {})
-                    state.average_score = review_data.get("average_score", 0.0)
+                    avg_score = review_data.get("average_score")
+                    # Handle None average_score (indicates review failure)
+                    if avg_score is None:
+                        logger.warning(f"Review returned None average_score for review_and_refine action (subject: {subject_from_state}). This indicates a review failure.")
+                        state.average_score = 0.0
+                    else:
+                        state.review_scores = review_data.get("scores", {})
+                        state.review_feedback = review_data.get("reviews", {})
+                        state.average_score = avg_score
+                        logger.info(f"Review completed with score: {state.average_score} (subject: {subject_from_state})")
             
             # Find lowest scoring aspects for improvement
             if hasattr(state, "review_scores") and state.review_scores:
@@ -1504,22 +1548,46 @@ def mcts_expand(node):
                     
                     # Evaluate the new child/sibling node
                     try:
-                        review_data = review_agent.unified_review(new_state.current_idea)
+                        # Get subject from node state or global selected_subject
+                        subject_from_state = getattr(node.state, "subject", None) or getattr(new_state, "subject", None) or selected_subject
+                        if not subject_from_state:
+                            logger.warning(f"No subject found for node {node.id}, review may use default prompts")
+                        
+                        review_data = review_agent.unified_review(new_state.current_idea, subject=subject_from_state)
                         if review_data:
-                            child.state.review_scores = review_data.get("scores", {})
-                            child.state.review_feedback = review_data.get("reviews", {})
-                            child.state.average_score = review_data.get("average_score", 0.0)
-                            child.state.reward = review_data.get("average_score", 0.0) / 10
+                            # Check if review_data has valid scores and average_score
+                            scores = review_data.get("scores", {})
+                            avg_score = review_data.get("average_score")
                             
-                            logger.info(f"Child node {child.id} evaluated with score: {child.state.average_score}")
+                            # Only use review_data if it has valid scores or a valid average_score
+                            # Handle None average_score (indicates review failure)
+                            if avg_score is None:
+                                logger.warning(f"Review returned None average_score for child node {child.id}. This indicates a review failure.")
+                                child.state.average_score = 0.0
+                                child.state.reward = 0.0
+                            elif scores or (avg_score is not None and avg_score > 0):
+                                child.state.review_scores = scores
+                                child.state.review_feedback = review_data.get("reviews", {})
+                                child.state.average_score = avg_score if avg_score is not None else 0.0
+                                child.state.reward = child.state.average_score / 10
+                                
+                                logger.info(f"Child node {child.id} evaluated with score: {child.state.average_score} (subject: {subject_from_state})")
+                            else:
+                                logger.warning(f"Review data for child node {child.id} has no valid scores or average_score. Scores: {scores}, Average: {avg_score}")
+                                # Don't set fallback score here - let it remain unset or use a more appropriate default
+                                child.state.average_score = 0.0
+                                child.state.reward = 0.0
                         else:
-                            child.state.average_score = 5.0
-                            child.state.reward = 0.5
+                            logger.warning(f"Review returned empty data for child node {child.id}")
+                            child.state.average_score = 0.0
+                            child.state.reward = 0.0
                             
                     except Exception as review_error:
-                        logger.error(f"Error evaluating child node {child.id}: {review_error}")
-                        child.state.average_score = 5.0
-                        child.state.reward = 0.5
+                        logger.error(f"Error evaluating child node {child.id}: {review_error}", exc_info=True)
+                        # Only set 5.0 as fallback if we're certain the review completely failed
+                        # For now, use 0.0 to indicate no valid score rather than a misleading 5.0
+                        child.state.average_score = 0.0
+                        child.state.reward = 0.0
                     
                     logger.info(f"Expanded node {node.id} with action {action}, created {'sibling' if action == 'refresh_idea' else 'child'} {child.id}")
                 
@@ -1580,16 +1648,22 @@ def mcts_evaluate(node):
             return node.state.average_score / 10.0  # Normalize to 0-1
         
         # Otherwise, get fresh review from Review Agent
-        review_data = review_agent.unified_review(node.state.current_idea)
+        subject_from_state = getattr(node.state, "subject", None) or selected_subject
+        review_data = review_agent.unified_review(node.state.current_idea, subject=subject_from_state)
         
-        if review_data and "average_score" in review_data:
-            # Update node state with review data
-            node.state.review_scores = review_data.get("scores", {})
-            node.state.review_feedback = review_data.get("reviews", {})
-            node.state.average_score = review_data["average_score"]
-            node.state.reward = review_data["average_score"] / 10.0
-            
-            return node.state.reward
+        if review_data:
+            avg_score = review_data.get("average_score")
+            if avg_score is not None and avg_score > 0:
+                # Update node state with review data
+                node.state.review_scores = review_data.get("scores", {})
+                node.state.review_feedback = review_data.get("reviews", {})
+                node.state.average_score = avg_score
+                node.state.reward = avg_score / 10.0
+                
+                return node.state.reward
+            else:
+                logger.warning(f"Review returned invalid average_score for node {node.id}: {avg_score}")
+                return 0.0
         
         # Fallback reward based on depth (deeper = less reward)
         return 1.0 / (node.state.depth + 1)
@@ -2011,16 +2085,23 @@ def improve_idea():
         )
         
         # Get review using the unified review method
-        review_data = review_agent.unified_review(improved_idea)
-        print(f"Review score: {review_data['average_score']}")
+        review_data = review_agent.unified_review(improved_idea, subject=subject_from_state)
+        avg_score = review_data.get("average_score") if review_data else None
+        if avg_score is not None:
+            print(f"Review score: {avg_score}")
+        else:
+            logger.warning(f"Review returned None average_score for improve_idea action (subject: {subject_from_state})")
         if review_data:
             if "scores" in review_data:
                 new_state.review_scores = review_data["scores"]
             if "reviews" in review_data:
                 new_state.review_feedback = review_data["reviews"]
-            if "average_score" in review_data:
-                new_state.average_score = review_data["average_score"]
-                new_state.reward = review_data["average_score"]
+            if avg_score is not None:
+                new_state.average_score = avg_score
+                new_state.reward = avg_score
+            else:
+                new_state.average_score = 0.0
+                new_state.reward = 0.0
         
         # Create new node and add as child of current node
         new_node = current_node.add_child(new_state, "review_and_refine")
@@ -2344,25 +2425,34 @@ def improve_idea_with_knowledge():
         main_idea = improved_idea
         
         # Create a new state with trajectory-level memory
+        subject_from_state = getattr(current_node.state, "subject", None) or selected_subject
         new_state = MCTSState(
             research_goal=current_node.state.research_goal,
             current_idea=improved_idea,
             retrieved_knowledge=current_node.state.retrieved_knowledge.copy() + [retrieval_results.get("query", "")],
             feedback=current_node.state.feedback.copy(),
-            depth=current_node.state.depth + 1
+            depth=current_node.state.depth + 1,
+            subject=subject_from_state
         )
         
         # Get review using the unified review method
-        review_data = review_agent.unified_review(improved_idea)
-        print(f"Review score: {review_data['average_score']}")
+        review_data = review_agent.unified_review(improved_idea, subject=subject_from_state)
+        avg_score = review_data.get("average_score") if review_data else None
+        if avg_score is not None:
+            print(f"Review score: {avg_score}")
+        else:
+            logger.warning(f"Review returned None average_score for retrieve_and_refine route (subject: {subject_from_state})")
         if review_data:
             if "scores" in review_data:
                 new_state.review_scores = review_data["scores"]
             if "reviews" in review_data:
                 new_state.review_feedback = review_data["reviews"]
-            if "average_score" in review_data:
-                new_state.average_score = review_data["average_score"]
-                new_state.reward = review_data["average_score"]
+            if avg_score is not None:
+                new_state.average_score = avg_score
+                new_state.reward = avg_score
+            else:
+                new_state.average_score = 0.0
+                new_state.reward = 0.0
         
         # Create new node and add as child of current node
         new_node = current_node.add_child(new_state, "retrieve_and_refine")
@@ -2426,25 +2516,34 @@ def refresh_idea():
         
         # Create a new state with trajectory-level memory
         # Start with depth 1 since this is directly connected to the root
+        subject_from_state = getattr(current_node.state, "subject", None) if current_node else selected_subject
         new_state = MCTSState(
             research_goal=research_goal,
             current_idea=new_idea,
             retrieved_knowledge=[],  # Start with empty retrieved knowledge for new approach
             feedback={},  # Start with empty feedback for new approach
-            depth=1  # Directly connected to root, so depth is 1
+            depth=1,  # Directly connected to root, so depth is 1
+            subject=subject_from_state
         )
         
         # Get review using the unified review method
-        review_data = review_agent.unified_review(new_idea)
-        print(f"Review score: {review_data['average_score']}")
+        review_data = review_agent.unified_review(new_idea, subject=subject_from_state)
+        avg_score = review_data.get("average_score") if review_data else None
+        if avg_score is not None:
+            print(f"Review score: {avg_score}")
+        else:
+            logger.warning(f"Review returned None average_score for refresh_idea route (subject: {subject_from_state})")
         if review_data:
             if "scores" in review_data:
                 new_state.review_scores = review_data["scores"]
             if "reviews" in review_data:
                 new_state.review_feedback = review_data["reviews"]
-            if "average_score" in review_data:
-                new_state.average_score = review_data["average_score"]
-                new_state.reward = review_data["average_score"]
+            if avg_score is not None:
+                new_state.average_score = avg_score
+                new_state.reward = avg_score
+            else:
+                new_state.average_score = 0.0
+                new_state.reward = 0.0
         
         # Create new node and add as child of the ROOT node instead of current node
         new_node = current_root.add_child(new_state, "refresh_idea")

@@ -2,6 +2,7 @@ import json
 import re
 import yaml
 import logging
+import traceback
 from typing import Dict, Any, List, Optional, Tuple
 from .base import BaseAgent
 import numpy as np
@@ -148,6 +149,28 @@ class ReviewAgent(BaseAgent):
             response = self.chat(messages)
             content = response.choices[0].message.content
             
+            # Log the raw response for debugging - also write to file for easier inspection
+            logger.info(f"Raw LLM response (first 1000 chars): {content[:1000]}")
+            logger.debug(f"Full LLM response length: {len(content)} chars")
+            logger.debug(f"Subject: {subject}")
+            
+            # Write full response to a debug file for inspection
+            try:
+                import os
+                debug_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs", "review_debug")
+                os.makedirs(debug_dir, exist_ok=True)
+                import time
+                debug_file = os.path.join(debug_dir, f"review_response_{int(time.time())}.txt")
+                with open(debug_file, "w", encoding="utf-8") as f:
+                    f.write(f"Subject: {subject}\n")
+                    f.write(f"Response length: {len(content)} chars\n")
+                    f.write("=" * 80 + "\n")
+                    f.write(content)
+                    f.write("\n" + "=" * 80 + "\n")
+                logger.info(f"Full LLM response written to: {debug_file}")
+            except Exception as e:
+                logger.warning(f"Could not write debug file: {e}")
+            
             # Parse the response
             parsed_data = self.parse_unified_review(content)
             
@@ -156,22 +179,57 @@ class ReviewAgent(BaseAgent):
                 scores = parsed_data["scores"]
                 valid_scores = {k: v for k, v in scores.items() if isinstance(v, (int, float))}
                 if valid_scores:
-                    weighted_avg = sum(v * self.aspect_weights[k] for k, v in valid_scores.items())
-                    parsed_data["average_score"] = weighted_avg
-                    # Print scores and weighted average for verification
-                    print("\n=== Review Scores ===")
-                    print("Individual scores:")
+                    # Calculate weighted average only for aspects that have weights defined
+                    weighted_sum = 0.0
+                    weight_sum = 0.0
                     for aspect, score in valid_scores.items():
-                        print(f"{aspect}: {score} (weight: {self.aspect_weights[aspect]})")
-                    print(f"Weighted average: {weighted_avg:.2f}")
+                        if aspect in self.aspect_weights:
+                            weight = self.aspect_weights[aspect]
+                            weighted_sum += score * weight
+                            weight_sum += weight
+                    
+                    if weight_sum > 0:
+                        weighted_avg = weighted_sum / weight_sum
+                        parsed_data["average_score"] = weighted_avg
+                        # Print scores and weighted average for verification
+                        print("\n=== Review Scores ===")
+                        print("Individual scores:")
+                        for aspect, score in valid_scores.items():
+                            weight = self.aspect_weights.get(aspect, 0.0)
+                            print(f"{aspect}: {score} (weight: {weight})")
+                        print(f"Weighted average: {weighted_avg:.2f}")
+                    else:
+                        logger.warning("No valid aspect weights found for calculating average score")
+                        # Don't set average_score if we can't calculate it properly
+                else:
+                    logger.warning(f"Parsed scores but none are valid numbers. Scores: {scores}")
+            else:
+                logger.warning(f"No scores found in parsed review data. Parsed data keys: {list(parsed_data.keys())}")
+            
+            # Validate that average_score was calculated if scores exist
+            if "scores" in parsed_data and parsed_data["scores"] and "average_score" not in parsed_data:
+                logger.warning("Scores exist but average_score was not calculated. This indicates a parsing or calculation issue.")
+            
+            # Fallback: If we have some scores but not all, try to calculate average from what we have
+            if "scores" in parsed_data and parsed_data["scores"] and "average_score" not in parsed_data:
+                scores = parsed_data["scores"]
+                valid_scores = {k: v for k, v in scores.items() if isinstance(v, (int, float)) and v > 0}
+                if valid_scores:
+                    # Calculate simple average as fallback if weighted average wasn't calculated
+                    simple_avg = sum(valid_scores.values()) / len(valid_scores)
+                    parsed_data["average_score"] = simple_avg
+                    logger.info(f"Calculated fallback average score: {simple_avg:.2f} from {len(valid_scores)} valid scores: {list(valid_scores.keys())}")
+            
             return parsed_data
             
         except Exception as e:
-            logger.exception(f"Error in unified review: {e}")
+            logger.exception(f"Error in unified review for idea (subject: {subject}): {e}")
+            # Return empty dict instead of defaulting to 5.0 to indicate failure
+            # This allows callers to handle the failure appropriately
             return {
                 "scores": {},
                 "reviews": {},
-                "average_score": 5.0
+                "average_score": None  # Use None instead of 5.0 to indicate no valid score
             }
     
     def parse_unified_review(self, response: str) -> Dict[str, Any]:
@@ -187,28 +245,72 @@ class ReviewAgent(BaseAgent):
         
         try:
             # Method 1: Try to parse as JSON first (simplest case)
+            logger.debug("Attempting JSON extraction from response")
             data = self._extract_json_data(response)
             if data and isinstance(data, dict):
-                # Extract scores and reviews
+                logger.debug(f"Successfully extracted JSON data with keys: {list(data.keys())}")
+                # Extract scores and reviews - handle various key names
                 if "scores" in data:
                     result["scores"] = data["scores"]
                 elif "ratings" in data:
                     result["scores"] = data["ratings"]
+                elif "score" in data:  # Single score key
+                    if isinstance(data["score"], dict):
+                        result["scores"] = data["score"]
+                    else:
+                        # If it's a single number, try to find individual scores elsewhere
+                        logger.debug(f"Found single 'score' key with value: {data['score']}")
+                
+                # Also check for scores nested in other structures
+                if not result["scores"]:
+                    # Look for common variations
+                    for key in ["evaluation", "assessment", "review_data", "results"]:
+                        if key in data and isinstance(data[key], dict) and "scores" in data[key]:
+                            result["scores"] = data[key]["scores"]
+                            break
                 
                 if "reviews" in data:
                     result["reviews"] = data["reviews"]
                 elif "feedback" in data:
                     result["reviews"] = data["feedback"]
+                elif "review" in data and isinstance(data["review"], dict):
+                    result["reviews"] = data["review"]
+                
+                # Normalize score values - handle string scores
+                if result["scores"]:
+                    normalized_scores = {}
+                    for key, value in result["scores"].items():
+                        try:
+                            if isinstance(value, str):
+                                # Try to extract number from string
+                                num_match = re.search(r'(\d+(?:\.\d+)?)', value)
+                                if num_match:
+                                    normalized_scores[key] = float(num_match.group(1))
+                                else:
+                                    normalized_scores[key] = float(value)
+                            else:
+                                normalized_scores[key] = float(value)
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f"Could not normalize score for {key}: {value} ({e})")
+                            continue
+                    result["scores"] = normalized_scores
                 
                 # If we got valid data, return it
                 if result["scores"] and len(result["scores"]) > 0:
                     print(f"Successfully parsed JSON for review scores: {list(result['scores'].keys())}")
+                    logger.info(f"Extracted scores: {result['scores']}")
                     return result
+                else:
+                    logger.warning(f"JSON parsing found data but no valid scores. Data keys: {list(data.keys())}")
+                    logger.warning(f"Data content: {str(data)[:500]}")
+                    # Try to find scores in the data structure
+                    logger.debug(f"Full extracted data structure: {json.dumps(data, indent=2)[:1000]}")
         
         except Exception as e:
-            print(f"JSON parsing failed: {e}")
+            logger.warning(f"JSON parsing failed: {e}")
+            logger.debug(f"JSON parsing exception details: {traceback.format_exc()}")
         
-        print("Direct JSON parsing failed, using string extraction methods")
+        logger.info("Direct JSON parsing failed, using string extraction methods")
         
         # Method 2: Direct string extraction for structured JSON
         try:
@@ -284,19 +386,32 @@ class ReviewAgent(BaseAgent):
                 
                 for aspect in aspects:
                     # Look for score pattern like "novelty: 7" or "novelty score: 7"
+                    # Handle various formats: "7", "7.0", "7/10", "7 out of 10", etc.
                     patterns = [
-                        rf"{aspect}(?:\s+score)?:\s*(\d+(?:\.\d+)?)",
-                        rf"{aspect}:.*?(\d+(?:\.\d+)?)\s*\/\s*10",
-                        rf"{aspect}.*?score.*?(\d+(?:\.\d+)?)"
+                        rf'"{aspect}"\s*:\s*(\d+(?:\.\d+)?)',  # JSON format: "novelty": 7
+                        rf'"{aspect}"\s*:\s*"(\d+(?:\.\d+)?)"',  # JSON string: "novelty": "7"
+                        rf"{aspect}(?:\s+score)?\s*:\s*(\d+(?:\.\d+)?)",  # Text: novelty: 7
+                        rf"{aspect}(?:\s+score)?\s*[:\-]\s*(\d+(?:\.\d+)?)",  # Text: novelty - 7
+                        rf"{aspect}:.*?(\d+(?:\.\d+)?)\s*\/\s*10",  # Fraction: novelty: 7/10
+                        rf"{aspect}.*?(\d+(?:\.\d+)?)\s*out\s*of\s*10",  # Text: novelty 7 out of 10
+                        rf"{aspect}.*?score.*?(\d+(?:\.\d+)?)",  # Text: novelty score 7
+                        rf"{aspect}.*?rating.*?(\d+(?:\.\d+)?)",  # Text: novelty rating 7
+                        rf"{aspect}.*?(\d+(?:\.\d+)?)\s*(?:/|out of)\s*10",  # Various fraction formats
                     ]
                     
                     for pattern in patterns:
                         score_match = re.search(pattern, response, re.IGNORECASE)
                         if score_match:
                             try:
-                                result["scores"][aspect] = float(score_match.group(1))
+                                score_val = float(score_match.group(1))
+                                # Normalize scores that might be out of 10
+                                if score_val > 10:
+                                    score_val = score_val / 10.0
+                                result["scores"][aspect] = score_val
+                                logger.debug(f"Extracted {aspect} score: {score_val} using pattern: {pattern[:50]}")
                                 break
-                            except (ValueError, IndexError):
+                            except (ValueError, IndexError) as e:
+                                logger.debug(f"Failed to parse score for {aspect}: {e}")
                                 pass
                     
                     # Look for review text patterns
@@ -318,6 +433,16 @@ class ReviewAgent(BaseAgent):
         score_count = len(result["scores"])
         review_count = len(result["reviews"])
         print(f"Extracted {score_count} scores and {review_count} reviews")
+        
+        # Log warning if parsing failed to extract scores
+        if score_count == 0:
+            logger.warning(f"Failed to extract any scores from review response. Response length: {len(response)} chars")
+            logger.warning(f"Review response preview (first 1000 chars): {response[:1000]}")
+            logger.warning(f"Review response preview (last 500 chars): {response[-500:] if len(response) > 500 else response}")
+            # Log the full response for debugging
+            logger.debug(f"Full review response: {response}")
+        elif score_count < 5:
+            logger.warning(f"Only extracted {score_count} scores out of expected 5 aspects. Extracted: {list(result['scores'].keys())}")
             
         return result
     
@@ -342,18 +467,37 @@ class ReviewAgent(BaseAgent):
                             potential_json = potential_json[:i+1]
                             break
                 
-                return json.loads(potential_json)
-        except json.JSONDecodeError:
-            pass
+                # Try to clean up common JSON issues
+                # Remove trailing commas before closing braces/brackets
+                potential_json = re.sub(r',\s*}', '}', potential_json)
+                potential_json = re.sub(r',\s*]', ']', potential_json)
+                
+                parsed = json.loads(potential_json)
+                logger.debug(f"Successfully parsed JSON using Method 1")
+                return parsed
+        except json.JSONDecodeError as e:
+            logger.debug(f"Method 1 JSON parsing failed: {e}")
+            logger.debug(f"Attempted to parse: {potential_json[:200]}...")
+        except Exception as e:
+            logger.debug(f"Method 1 failed with exception: {e}")
         
         # Method 2: Look for JSON code block
         json_block_pattern = r"```(?:json)?\s*\n?([\s\S]*?)\n?```"
         match = re.search(json_block_pattern, text)
         if match:
             try:
-                return json.loads(match.group(1))
-            except json.JSONDecodeError:
-                pass
+                json_str = match.group(1).strip()
+                # Clean up trailing commas
+                json_str = re.sub(r',\s*}', '}', json_str)
+                json_str = re.sub(r',\s*]', ']', json_str)
+                parsed = json.loads(json_str)
+                logger.debug(f"Successfully parsed JSON using Method 2 (code block)")
+                return parsed
+            except json.JSONDecodeError as e:
+                logger.debug(f"Method 2 JSON parsing failed: {e}")
+                logger.debug(f"Attempted to parse from code block: {json_str[:200]}...")
+            except Exception as e:
+                logger.debug(f"Method 2 failed with exception: {e}")
                 
         # Method 3: Find JSON object with balanced braces
         try:
@@ -372,10 +516,20 @@ class ReviewAgent(BaseAgent):
                             break
                 if close_idx != -1:
                     json_str = text[start_idx : close_idx + 1]
-                    return json.loads(json_str)
-        except (json.JSONDecodeError, IndexError):
-            pass
+                    # Clean up trailing commas
+                    json_str = re.sub(r',\s*}', '}', json_str)
+                    json_str = re.sub(r',\s*]', ']', json_str)
+                    parsed = json.loads(json_str)
+                    logger.debug(f"Successfully parsed JSON using Method 3 (balanced braces)")
+                    return parsed
+        except json.JSONDecodeError as e:
+            logger.debug(f"Method 3 JSON parsing failed: {e}")
+            if 'json_str' in locals():
+                logger.debug(f"Attempted to parse: {json_str[:200]}...")
+        except (IndexError, Exception) as e:
+            logger.debug(f"Method 3 failed with exception: {e}")
             
+        logger.warning("All JSON extraction methods failed")
         return None
     
     def act(self, state: Dict) -> Dict:
