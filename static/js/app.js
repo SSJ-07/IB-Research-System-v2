@@ -291,6 +291,51 @@ function formatMessage(content) {
     }
 }
 
+function formatCitationPrefix(author, year, index, numbered) {
+    let authorCitation = '';
+    if (author) {
+        if (author.includes('et al.')) {
+            authorCitation = author;
+        } else {
+            const parts = author.trim().split(' ');
+            authorCitation = parts[parts.length - 1];
+        }
+    }
+    if (year) {
+        authorCitation += ` (${year})`;
+    }
+    if (numbered) {
+        authorCitation = `[${index}] ${authorCitation}`;
+    }
+    return authorCitation.trim();
+}
+
+function renderCitationList(citations, options = {}) {
+    const numbered = Boolean(options.numbered);
+    const validCitations = (citations || []).filter(c =>
+        c.author && c.author !== 'N/A' && c.author !== 'Unknown' &&
+        c.year && c.year !== 'N/A'
+    );
+    if (validCitations.length === 0) {
+        return { html: '', count: 0, citations: [] };
+    }
+    const citationsHtml = validCitations.map((c, index) => {
+        const title = c.title || 'Untitled';
+        const author = c.author || 'Unknown';
+        const year = c.year || 'n.d.';
+        const url = c.url || '';
+        const prefix = formatCitationPrefix(author, year, index + 1, numbered);
+        const linkHtml = url ? `<a href="${url}" target="_blank">${title}</a>` : `${title}`;
+        return `<div class="citation-item">
+            <div class="citation-link">
+                <span class="citation-prefix">${prefix}</span>
+                ${linkHtml}
+            </div>
+        </div>`;
+    }).join('');
+    return { html: citationsHtml, count: validCitations.length, citations: validCitations };
+}
+
 // Helper function to ensure consistent section header styling across the application
 function ensureSectionHeaderStyles() {
     const styleId = 'section-header-styles';
@@ -1085,8 +1130,6 @@ function expandSection(section) {
             btn.prop('disabled', false).text(originalText);
             // Display in chat with edit/approve/feedback
             displaySectionInChat(section, data.content, data.citations || []);
-            // Also update sidebar display
-            displayExpandedSection(section, data.content, data.citations || []);
         },
         error: function(xhr) {
             btn.prop('disabled', false).text(originalText);
@@ -1116,10 +1159,9 @@ function displaySectionInChat(section, content, citations) {
     const sectionName = sectionNames[section] || section;
     
     // Filter out N/A or empty citations just in case
-    const validCitations = (citations || []).filter(c => 
-        c.author && c.author !== 'N/A' && c.author !== 'Unknown' && 
-        c.year && c.year !== 'N/A'
-    );
+    const numbered = section === 'background';
+    const rendered = renderCitationList(citations, { numbered });
+    const validCitations = rendered.citations;
     
     // Check if content already contains hallucinated template citations and remove them
     let cleanContent = content;
@@ -1142,20 +1184,10 @@ function displaySectionInChat(section, content, citations) {
             <div class="section-text">
                 ${formatMessage(cleanContent)}
             </div>
-            ${validCitations.length > 0 ? `
+            ${rendered.count > 0 ? `
                 <div class="section-citations-box">
-                    <strong>Sources (${validCitations.length}):</strong>
-                    ${validCitations.map(c => {
-                        const title = c.title || 'Untitled';
-                        const author = c.author || 'Unknown';
-                        const year = c.year || 'n.d.';
-                        const url = c.url || '';
-                        const linkHtml = url ? `<a href="${url}" target="_blank" class="citation-link">View Paper</a>` : '';
-                        return `<div class="section-citation-item">
-                            <div class="citation-title">${title} ${linkHtml}</div>
-                            <div class="citation-meta">${author} (${year})</div>
-                        </div>`;
-                    }).join('')}
+                    <strong>Sources (${rendered.count}):</strong>
+                    ${rendered.html}
                 </div>
             ` : ''}
             <div class="ia-section-actions section-actions">
@@ -1264,12 +1296,16 @@ function handleSectionApproval(section, content, citations) {
     $(`#${section}-section`).show();
     
     // Display citations with consistent styling
-    if (citations && citations.length > 0) {
-        const citationsHtml = citations.map(c => {
-            const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
-            return `<div class="section-citation-item">${citationStr}</div>`;
-        }).join('');
-        $(`#${section}-citations`).html('<strong style="display: block; margin-bottom: 8px; color: #475569; font-size: 0.9rem;">Citations:</strong>' + citationsHtml);
+    const numbered = section === 'background';
+    const rendered = renderCitationList(citations || [], { numbered });
+    if (rendered.count > 0) {
+        $(`#${section}-citations`)
+            .data('citations', rendered.citations)
+            .addClass('section-citations-box')
+            .html(`<strong>Sources (${rendered.count}):</strong>` + rendered.html)
+            .show();
+    } else {
+        $(`#${section}-citations`).hide();
     }
     
     // Show success message with consistent styling
@@ -1461,24 +1497,10 @@ function displayExpandedSection(section, content, citations) {
     // Display citations
     if (citationsElement.length) {
         // Filter out N/A or empty citations
-        const validCitations = (citations || []).filter(c => 
-            c.author && c.author !== 'N/A' && c.author !== 'Unknown' && 
-            c.year && c.year !== 'N/A'
-        );
-        
-        if (validCitations.length > 0) {
-            const citationsHtml = validCitations.map(c => {
-                const title = c.title || 'Untitled';
-                const author = c.author || 'Unknown';
-                const year = c.year || 'n.d.';
-                const url = c.url || '';
-                const linkHtml = url ? `<a href="${url}" target="_blank" class="citation-link">View Paper</a>` : '';
-                return `<div class="section-citation-item">
-                    <div class="citation-title">${title} ${linkHtml}</div>
-                    <div class="citation-meta">${author} (${year})</div>
-                </div>`;
-            }).join('');
-            citationsElement.addClass('section-citations-box').html(`<strong>Sources (${validCitations.length}):</strong>` + citationsHtml).show();
+        const numbered = section === 'background';
+        const rendered = renderCitationList(citations, { numbered });
+        if (rendered.count > 0) {
+            citationsElement.addClass('section-citations-box').html(`<strong>Sources (${rendered.count}):</strong>` + rendered.html).show();
         } else {
             citationsElement.hide();
         }
@@ -1516,28 +1538,12 @@ function retrieveCitations(section) {
             const existingCitations = $(`#${section}-citations`).data('citations') || [];
             const allCitations = [...existingCitations, ...(data.citations || [])];
             
-            // Filter out N/A or empty citations
-            const validCitations = allCitations.filter(c => 
-                c.author && c.author !== 'N/A' && c.author !== 'Unknown' && 
-                c.year && c.year !== 'N/A'
-            );
+            const numbered = section === 'background';
+            const rendered = renderCitationList(allCitations, { numbered });
+            $(`#${section}-citations`).data('citations', rendered.citations);
             
-            $(`#${section}-citations`).data('citations', validCitations);
-            
-            const citationsHtml = validCitations.map(c => {
-                const title = c.title || 'Untitled';
-                const author = c.author || 'Unknown';
-                const year = c.year || 'n.d.';
-                const url = c.url || '';
-                const linkHtml = url ? `<a href="${url}" target="_blank" class="citation-link">View Paper</a>` : '';
-                return `<div class="section-citation-item">
-                    <div class="citation-title">${title} ${linkHtml}</div>
-                    <div class="citation-meta">${author} (${year})</div>
-                </div>`;
-            }).join('');
-            
-            if (validCitations.length > 0) {
-                $(`#${section}-citations`).addClass('section-citations-box').html(`<strong>Sources (${validCitations.length}):</strong>` + citationsHtml).show();
+            if (rendered.count > 0) {
+                $(`#${section}-citations`).addClass('section-citations-box').html(`<strong>Sources (${rendered.count}):</strong>` + rendered.html).show();
             } else {
                 $(`#${section}-citations`).hide();
             }

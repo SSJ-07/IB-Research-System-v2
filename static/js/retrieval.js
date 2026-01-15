@@ -495,7 +495,6 @@ const retrieval = {
                 $("#chat-box .message-container:last-child .loading-state").parent().remove();
                 if (data.content && typeof displaySectionInChat === 'function') {
                     displaySectionInChat(section, data.content, data.citations || []);
-                    displayExpandedSection(section, data.content, data.citations || []);
                 }
             },
             error: function(xhr) {

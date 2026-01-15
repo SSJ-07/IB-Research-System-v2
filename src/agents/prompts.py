@@ -847,7 +847,7 @@ Use the Research Brief above as context to inform your writing. If Retrieved Kno
 
 IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
 
-If real citations ARE provided above, you may cite them inline using the exact format shown in the RETRIEVED CITATIONS section. Do not modify or invent citation information.
+If real citations ARE provided above, cite them inline using numbered markers like [1], [2], etc. The numbers must correspond to the numbered list in RETRIEVED CITATIONS. Do not modify or invent citation information.
 
 Write the Background Information section using markdown formatting. The section should be 2-3 paragraphs and provide context for why this investigation is interesting and scientifically relevant.
 """

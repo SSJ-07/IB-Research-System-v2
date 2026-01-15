@@ -2256,7 +2256,7 @@ def retrieve_knowledge():
             
             # Extract citations
             citations = section_dict.get("citations", [])
-            for citation in citations:
+        for citation in citations:
                 # Handle both dict and Pydantic model citations
                 if isinstance(citation, dict):
                     citation_dict = citation
@@ -2281,18 +2281,19 @@ def retrieve_knowledge():
                 else:
                     authors = []
                 
+                paper_url = extract_paper_url(citation_dict, paper)
                 formatted_citation = {
                     "id": citation_id,
                     "title": paper.get("title", "Unknown paper"),
                     "authors": authors,
                     "year": paper.get("year", ""),
                     "venue": paper.get("venue", ""),
-                    "url": f"https://api.semanticscholar.org/CorpusID:{paper.get('corpus_id', '')}"
+                    "url": paper_url
                 }
                 
                 formatted_section["citations"].append(formatted_citation)
             
-            formatted_sections.append(formatted_section)
+        formatted_sections.append(formatted_section)
         
         # Add success message to chat
         sections_count = len(formatted_sections)
@@ -2836,6 +2837,19 @@ def normalize_author(authors):
         return authors
     return "Unknown"
 
+def extract_paper_url(citation_dict, paper):
+    """Extract the best available URL for a paper."""
+    if isinstance(citation_dict, dict):
+        if citation_dict.get("url"):
+            return citation_dict.get("url")
+    if paper.get("openAccessPdf") and paper["openAccessPdf"].get("url"):
+        return paper["openAccessPdf"]["url"]
+    if paper.get("url"):
+        return paper["url"]
+    if paper.get("corpus_id"):
+        return f"https://www.semanticscholar.org/paper/{paper['corpus_id']}"
+    return ""
+
 def retrieve_section_knowledge(section: str, ia_topic: str, research_question: str, additional_context: str = ""):
     """Retrieve section-specific knowledge and citations from ScholarQA."""
     query = generate_citation_query(section, ia_topic, research_question)
@@ -2879,13 +2893,7 @@ def retrieve_section_knowledge(section: str, ia_topic: str, research_question: s
             if not author or author in ("N/A", "Unknown") or not year or year == "N/A":
                 continue
 
-            paper_url = ""
-            if paper.get("openAccessPdf") and paper["openAccessPdf"].get("url"):
-                paper_url = paper["openAccessPdf"]["url"]
-            elif paper.get("url"):
-                paper_url = paper["url"]
-            elif paper.get("corpus_id"):
-                paper_url = f"https://www.semanticscholar.org/paper/{paper['corpus_id']}"
+            paper_url = extract_paper_url(citation_dict, paper)
 
             citations_list.append({
                 "id": citation_dict.get("id", ""),
@@ -2921,14 +2929,7 @@ def retrieve_citations_for_section(query: str):
                     if not author or author in ("N/A", "Unknown") or not year or year == "N/A":
                         continue
                         
-                    # Get paper URL (try openAccessPdf first, then regular url)
-                    paper_url = ""
-                    if paper.get("openAccessPdf") and paper["openAccessPdf"].get("url"):
-                        paper_url = paper["openAccessPdf"]["url"]
-                    elif paper.get("url"):
-                        paper_url = paper["url"]
-                    elif paper.get("corpus_id"):
-                        paper_url = f"https://www.semanticscholar.org/paper/{paper['corpus_id']}"
+                    paper_url = extract_paper_url(citation, paper)
                     
                     citations.append({
                         "id": citation_id,
@@ -2953,6 +2954,15 @@ def format_citation_for_prompt(citation_dict):
     citation_count = citation_dict.get("citation_count", 0)
     
     return f"[{citation_id} | {author} | {year} | Citations: {citation_count}]"
+
+def format_citation_for_prompt_numbered(citation_dict, number: int):
+    """Format citation dictionary to numbered references for inline [n] use."""
+    author = citation_dict.get("author", "Unknown")
+    year = citation_dict.get("year", "")
+    title = citation_dict.get("title", "Untitled")
+    url = citation_dict.get("url", "")
+    url_part = f" | {url}" if url else ""
+    return f"{number}. {author} ({year}) - {title}{url_part}"
 
 @app.route("/api/expand/background", methods=["POST"])
 def expand_background():
@@ -2979,7 +2989,7 @@ def expand_background():
         else:
             query = generate_citation_query("background", ia_topic, research_question)
             citations_list = retrieve_citations_for_section(query)
-        citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
+        citations_str = "\n".join([format_citation_for_prompt_numbered(c, i + 1) for i, c in enumerate(citations_list)])
         
         # Get research brief content
         research_brief = main_idea or (current_node.state.content if hasattr(current_node.state, 'content') else "")
@@ -3269,14 +3279,7 @@ def improve_section_with_knowledge():
                     if not author or author in ("N/A", "Unknown") or not year or year == "N/A":
                         continue
                         
-                    # Get paper URL
-                    paper_url = ""
-                    if paper.get("openAccessPdf") and paper["openAccessPdf"].get("url"):
-                        paper_url = paper["openAccessPdf"]["url"]
-                    elif paper.get("url"):
-                        paper_url = paper["url"]
-                    elif paper.get("corpus_id"):
-                        paper_url = f"https://www.semanticscholar.org/paper/{paper['corpus_id']}"
+                    paper_url = extract_paper_url(citation, paper)
                     
                     citations_list.append({
                         "id": citation_id,
@@ -3289,7 +3292,10 @@ def improve_section_with_knowledge():
                     })
         
         formatted_knowledge = "\n\n".join(retrieved_content)
-        citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list[:10]])
+        if section == "background":
+            citations_str = "\n".join([format_citation_for_prompt_numbered(c, i + 1) for i, c in enumerate(citations_list[:10])])
+        else:
+            citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list[:10]])
         
         # Get research brief content
         research_brief = main_idea or (current_node.state.content if current_node and hasattr(current_node.state, 'content') else "")
