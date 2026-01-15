@@ -2312,6 +2312,19 @@ def retrieve_knowledge():
         error_trace = traceback.format_exc()
         error_message = str(e)
         
+        # Handle "no results" cases gracefully - return 200 with empty results instead of 500
+        if "No relevant quotes extracted" in error_message or "No relevant papers found" in error_message:
+            logger.info(f"No results found for query: {query}")
+            chat_messages.append({
+                "role": "system",
+                "content": f"No relevant literature found for query: \"{query}\". Try refining your search terms or using a broader query."
+            })
+            return jsonify({
+                "query": query,
+                "sections": [],
+                "message": "No relevant literature found. Please try a different or broader search query."
+            }), 200
+        
         # Check if it's a Semantic Scholar API 403 error
         if "403" in error_message or "S2 API" in error_message:
             error_message = "Semantic Scholar API authentication failed. Please check your SEMANTIC_SCHOLAR_API_KEY in the .env file. The API key may be invalid, expired, or missing required permissions."

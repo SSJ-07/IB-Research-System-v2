@@ -681,11 +681,27 @@ UNIFIED_REVIEW_PROMPT_PHYSICS = """Evaluate the following physics research idea 
 {research_idea}
 
 Provide a detailed review for each of these five aspects (mapped to IA criteria):
-1. RQ & Design Fit: How well the research question aligns with the experimental design and maps to the Research Design criterion. Does the RQ have clear IV, DV, and scope? Is the design appropriate to answer the RQ?
-2. Data/Analysis Viability: Quality of data collection plan and analysis methods, mapping to the Data Analysis criterion. Are measurements appropriate? Is the analysis plan sound?
-3. Conclusion Traceability: Can the experimental design produce evidence sufficient for a meaningful conclusion? Will the data allow for clear conclusions?
-4. Evaluation Potential: Can meaningful limitations and improvements be identified? Does the design allow for critical evaluation?
-5. Safety & Practicality: Feasibility for school laboratory setting, safety considerations, and practical constraints. Is it safe and achievable?
+1. RQ & Design Fit (including Novelty): How well the research question aligns with the experimental design and maps to the Research Design criterion. Does the RQ have clear IV, DV, and scope? Is the design appropriate to answer the RQ? CRITICALLY ASSESS NOVELTY: How original and innovative is this research question and experimental design approach compared to standard IA topics? Does it explore a unique angle, use creative methodology, or investigate an understudied relationship? Avoid generic or overdone topics unless the investigation introduces a clearly refined scope, improved methodology, or deeper analysis beyond standard treatments
+
+2. Data/Analysis Viability: Quality of data collection plan and analysis methods, mapping to the Data Analysis criterion. STRICT REQUIREMENTS: Are measurements appropriate with sufficient precision for the research question? Does the analysis plan include proper statistical methods (e.g., error propagation, regression analysis, chi-square tests where applicable)? Are uncertainty calculations explicitly planned? Will the data quality be sufficient to draw meaningful conclusions? The analysis must be rigorous and appropriate for the level of investigation.
+
+3. Conclusion Traceability (including Impact): Can the experimental design produce evidence sufficient for a meaningful conclusion? Will the data allow for clear conclusions? CRITICALLY ASSESS IMPACT: What is the potential scientific and practical significance of this research? How does this contribute to understanding fundamental physics principles? Does it have real-world applications or implications? Will the findings be meaningful beyond just completing the IA? Impact must be substantial and clearly articulated.
+
+4. Evaluation Potential:
+Can meaningful limitations and improvements be identified?
+Does the design naturally allow for discussion of uncertainties, systematic errors, and methodological limitations?
+Are proposed improvements realistic and specific (not generic)?
+Does the evaluation demonstrate critical understanding of the investigation rather than surface-level reflection?
+
+5. Safety & Practicality (Feasibility - STRICT): Feasibility for school laboratory setting, safety considerations, and practical constraints. STRICT REQUIREMENTS FOR HIGH SCORES: 
+- Equipment: Must use only equipment readily available in standard school physics labs (no specialized or expensive equipment)
+- Time: Must be completable within typical IA timeframe (approximately 10-15 hours of lab work, excluding write-up)
+- Budget: Materials must be affordable and commonly available (no expensive sensors, specialized components, or rare materials)
+- Technical Skills: Must be appropriate for student level - no advanced techniques requiring extensive training or expertise
+- Resources: Must rely on common materials and standard lab equipment only
+- Safety: Must have minimal risk with standard safety protocols (no high-voltage, dangerous chemicals, or significant hazards)
+- Practicality: Setup and execution must be straightforward without requiring complex apparatus construction or specialized knowledge
+Is it safe, achievable, and realistic for a school laboratory IA? Ideas that require specialized equipment, excessive time, high costs, or advanced skills should receive low scores.
 
 Additionally, consider these physics-specific aspects (provide as extra_scores):
 - Experimental Rigor: Quality of experimental design, measurement techniques, and data collection methods
