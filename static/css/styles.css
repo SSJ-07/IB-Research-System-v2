@@ -2997,7 +2997,8 @@ hr {
     line-height: 1.5;
 }
 
-/* RQ Warnings */
+/* IA Section Warnings (used for RQ, Background, Procedure, Research Design) */
+.ia-section-warnings,
 .rq-warnings {
     margin-bottom: 15px;
     padding: 12px;
@@ -3006,6 +3007,7 @@ hr {
     border-left: 3px solid #ef4444;
 }
 
+.ia-section-warnings-title,
 .rq-warnings-title {
     color: #991b1b;
     display: block;
@@ -3014,6 +3016,7 @@ hr {
     font-size: 0.9rem;
 }
 
+.ia-section-warnings ul,
 .rq-warnings ul {
     margin: 0;
     padding-left: 20px;
@@ -3021,11 +3024,13 @@ hr {
     font-size: 0.9rem;
 }
 
+.ia-section-warnings li,
 .rq-warnings li {
     margin: 5px 0;
 }
 
-/* RQ Actions container */
+/* IA Section Actions container (used for RQ, Background, Procedure, Research Design) */
+.ia-section-actions,
 .rq-actions {
     display: flex;
     gap: 8px;
@@ -3033,7 +3038,8 @@ hr {
     flex-wrap: wrap;
 }
 
-/* RQ Action buttons - base style */
+/* IA Section Action buttons - base style (used for all IA sections) */
+.ia-section-action-btn,
 .rq-action-btn {
     flex: 1;
     min-width: 100px;
@@ -3052,39 +3058,98 @@ hr {
     gap: 6px;
 }
 
+.ia-section-action-btn:hover,
 .rq-action-btn:hover {
     background: #e2e8f0;
     border-color: #cbd5e1;
 }
 
-/* Primary action (Approve) */
+/* Primary action (Approve, Save) */
+.ia-section-action-btn.primary,
 .rq-action-btn.primary {
     background: #3b82f6;
     color: white;
     border-color: #3b82f6;
 }
 
+.ia-section-action-btn.primary:hover,
 .rq-action-btn.primary:hover {
     background: #2563eb;
     border-color: #2563eb;
 }
 
-/* Secondary action (Edit, Feedback) */
+/* Secondary action (Edit, Feedback, Cancel) */
+.ia-section-action-btn.secondary,
 .rq-action-btn.secondary {
     background: #f1f5f9;
     color: #475569;
 }
 
 /* Danger action (Decline) */
+.ia-section-action-btn.danger,
 .rq-action-btn.danger {
     background: #fee2e2;
     color: #991b1b;
     border-color: #fecaca;
 }
 
+.ia-section-action-btn.danger:hover,
 .rq-action-btn.danger:hover {
     background: #fecaca;
     border-color: #fca5a5;
+}
+
+/* Save button (uses primary style) */
+.ia-section-save-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 8px 16px;
+    background: #22c55e;
+    color: white;
+    border: 1px solid #22c55e;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ia-section-save-btn:hover {
+    background: #16a34a;
+    border-color: #16a34a;
+}
+
+/* Cancel button (uses secondary style) */
+.ia-section-cancel-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 8px 16px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ia-section-cancel-btn:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+/* Edit actions container */
+.ia-section-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
 }
 
 /* RQ Display in right panel */

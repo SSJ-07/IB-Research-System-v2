@@ -807,19 +807,19 @@ function displayRQInChat(rq, warnings, is_valid) {
 }
 
 function editRQ(rqCard, rq, warnings, is_valid) {
-    const rqTextDiv = rqCard.find('.rq-text');
+    const rqTextDiv = rqCard.find('.rq-text, .ia-section-text');
     const currentText = rqTextDiv.text().trim();
     
     // Create editable textarea
-    const textarea = $('<textarea></textarea>')
+    const textarea = $('<textarea class="ia-section-edit-textarea"></textarea>')
         .css({
             'width': '100%',
             'min-height': '80px',
             'padding': '12px',
-            'border': '2px solid #2196f3',
-            'border-radius': '6px',
-            'font-size': '16px',
-            'font-weight': '600',
+            'border': '2px solid #3b82f6',
+            'border-radius': '8px',
+            'font-size': '0.95rem',
+            'font-weight': '500',
             'font-family': 'inherit',
             'resize': 'vertical'
         })
@@ -828,37 +828,35 @@ function editRQ(rqCard, rq, warnings, is_valid) {
     // Replace text with textarea
     rqTextDiv.replaceWith(textarea);
     
-    // Add save/cancel buttons
-    const editActions = $('<div class="rq-edit-actions" style="display: flex; gap: 10px; margin-top: 10px;"></div>');
-    const saveBtn = $('<button class="rq-save-btn" style="flex: 1; padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Save</button>');
-    const cancelBtn = $('<button class="rq-cancel-btn" style="flex: 1; padding: 8px 16px; background: #757575; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>');
+    // Add save/cancel buttons using new CSS classes
+    const editActions = $('<div class="ia-section-edit-actions"></div>');
+    const saveBtn = $('<button class="ia-section-save-btn">Save</button>');
+    const cancelBtn = $('<button class="ia-section-cancel-btn">Cancel</button>');
     
     editActions.append(saveBtn).append(cancelBtn);
-    rqCard.find('.rq-actions').before(editActions);
+    rqCard.find('.rq-actions, .ia-section-actions').before(editActions);
     
     // Hide original action buttons
-    rqCard.find('.rq-actions').hide();
+    rqCard.find('.rq-actions, .ia-section-actions').hide();
     
     // Save handler
     saveBtn.on('click', function() {
         const newRQ = textarea.val().trim();
         if (newRQ) {
             // Replace textarea with updated text
-            const newTextDiv = $('<div class="rq-text" style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #2196f3;"></div>')
-                .text(newRQ);
+            const newTextDiv = $('<div class="ia-section-text rq-text"></div>').text(newRQ);
             textarea.replaceWith(newTextDiv);
             editActions.remove();
-            rqCard.find('.rq-actions').show();
+            rqCard.find('.rq-actions, .ia-section-actions').show();
         }
     });
     
     // Cancel handler
     cancelBtn.on('click', function() {
-        const originalTextDiv = $('<div class="rq-text" style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid ' + (is_valid ? '#4caf50' : '#ff9800') + ';"></div>')
-            .text(currentText);
+        const originalTextDiv = $('<div class="ia-section-text rq-text"></div>').text(currentText);
         textarea.replaceWith(originalTextDiv);
         editActions.remove();
-        rqCard.find('.rq-actions').show();
+        rqCard.find('.rq-actions, .ia-section-actions').show();
     });
 }
 
@@ -1100,11 +1098,11 @@ function displaySectionInChat(section, content, citations) {
                     }).join('')}
                 </div>
             ` : ''}
-            <div class="section-actions">
-                <button class="rq-action-btn secondary section-edit-btn">Edit</button>
-                <button class="rq-action-btn primary section-approve-btn">Approve</button>
-                <button class="rq-action-btn danger section-decline-btn">Decline</button>
-                <button class="rq-action-btn secondary section-feedback-btn">Feedback</button>
+            <div class="ia-section-actions section-actions">
+                <button class="ia-section-action-btn secondary section-edit-btn">Edit</button>
+                <button class="ia-section-action-btn primary section-approve-btn">Approve</button>
+                <button class="ia-section-action-btn danger section-decline-btn">Decline</button>
+                <button class="ia-section-action-btn secondary section-feedback-btn">Feedback</button>
             </div>
         </div>
     `);
@@ -1138,18 +1136,18 @@ function displaySectionInChat(section, content, citations) {
 }
 
 function editSection(sectionCard, section, content, citations) {
-    const sectionTextDiv = sectionCard.find('.section-text');
+    const sectionTextDiv = sectionCard.find('.section-text, .ia-section-text');
     const currentHtml = sectionTextDiv.html();
     
     // Create editable textarea
-    const textarea = $('<textarea></textarea>')
+    const textarea = $('<textarea class="ia-section-edit-textarea"></textarea>')
         .css({
             'width': '100%',
             'min-height': '200px',
             'padding': '12px',
-            'border': '2px solid #2196f3',
-            'border-radius': '6px',
-            'font-size': '14px',
+            'border': '2px solid #3b82f6',
+            'border-radius': '8px',
+            'font-size': '0.95rem',
             'font-family': 'inherit',
             'resize': 'vertical',
             'white-space': 'pre-wrap'
@@ -1159,37 +1157,37 @@ function editSection(sectionCard, section, content, citations) {
     // Replace text with textarea
     sectionTextDiv.replaceWith(textarea);
     
-    // Add save/cancel buttons
-    const editActions = $('<div class="section-edit-actions" style="display: flex; gap: 10px; margin-top: 10px;"></div>');
-    const saveBtn = $('<button class="section-save-btn" style="flex: 1; padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Save</button>');
-    const cancelBtn = $('<button class="section-cancel-btn" style="flex: 1; padding: 8px 16px; background: #757575; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Cancel</button>');
+    // Add save/cancel buttons using new CSS classes
+    const editActions = $('<div class="ia-section-edit-actions"></div>');
+    const saveBtn = $('<button class="ia-section-save-btn">Save</button>');
+    const cancelBtn = $('<button class="ia-section-cancel-btn">Cancel</button>');
     
     editActions.append(saveBtn).append(cancelBtn);
-    sectionCard.find('.section-actions').before(editActions);
+    sectionCard.find('.section-actions, .ia-section-actions').before(editActions);
     
     // Hide original action buttons
-    sectionCard.find('.section-actions').hide();
+    sectionCard.find('.section-actions, .ia-section-actions').hide();
     
     // Save handler
     saveBtn.on('click', function() {
         const newContent = textarea.val().trim();
         if (newContent) {
             // Replace textarea with updated content
-            const newTextDiv = $('<div class="section-text" style="font-size: 14px; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #2196f3; white-space: pre-wrap;"></div>')
+            const newTextDiv = $('<div class="ia-section-text section-text"></div>')
                 .html(formatMessage(newContent));
             textarea.replaceWith(newTextDiv);
             editActions.remove();
-            sectionCard.find('.section-actions').show();
+            sectionCard.find('.section-actions, .ia-section-actions').show();
         }
     });
     
     // Cancel handler
     cancelBtn.on('click', function() {
-        const originalTextDiv = $('<div class="section-text" style="font-size: 14px; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #2196f3; white-space: pre-wrap;"></div>')
+        const originalTextDiv = $('<div class="ia-section-text section-text"></div>')
             .html(currentHtml);
         textarea.replaceWith(originalTextDiv);
         editActions.remove();
-        sectionCard.find('.section-actions').show();
+        sectionCard.find('.section-actions, .ia-section-actions').show();
     });
 }
 
