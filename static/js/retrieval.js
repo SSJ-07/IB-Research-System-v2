@@ -126,6 +126,10 @@ const retrieval = {
                 this.currentResults = response;
                 console.log("LiteraturePanel: Displaying results, sections count:", response.sections.length);
                 try {
+                    if (response.sections.length === 0) {
+                        this.showErrorState("No papers found for this query. Try a broader search.");
+                        return false;
+                    }
                     this.displayResults(response);
                     console.log("LiteraturePanel: Results displayed successfully");
                 } catch (displayError) {

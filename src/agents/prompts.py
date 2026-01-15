@@ -780,7 +780,7 @@ Return your response as a structured text (not JSON) that reads like a research 
 Format your response using clear markdown sections. Do not use JSON format - write as a natural research brief.
 """
 
-IDEATION_RQ_PROMPT_PHYSICS = """Act as an experienced physics researcher specializing in IBDP Physics Internal Assessments. Your task is to generate a hyper-specific research question (RQ) in proper IB format from the given IA topic.
+IDEATION_RQ_PROMPT_PHYSICS = """Act as an experienced physics researcher specializing in IBDP Physics Internal Assessments. Your task is to generate TWO hyper-specific research questions (RQs) in proper IB format from the given IA topic.
 
 IA TOPIC:
 {ia_topic}
@@ -802,19 +802,23 @@ RQ TEMPLATES:
   Example: "How does thickness of EPS and EPE foam affect sound attenuation at various frequencies, and which is more effective?"
 
 Your task:
-1. Generate a hyper-specific RQ that follows IB format requirements
-2. Ensure the RQ aligns with the Physics syllabus topics listed above
-3. Ensure the RQ includes IV, DV, units, and scope
-4. Make it specific enough to guide a focused experimental investigation
-5. Ensure it is measurable and feasible for school laboratory
+1. Generate TWO distinct hyper-specific RQs that follow IB format requirements
+2. Ensure each RQ aligns with the Physics syllabus topics listed above
+3. Ensure each RQ includes IV, DV, units, and scope
+4. Make each RQ specific enough to guide a focused experimental investigation
+5. Ensure each RQ is measurable and feasible for school laboratory
 
-If the generated RQ does not meet all requirements, rewrite it to include:
+If any generated RQ does not meet all requirements, rewrite it to include:
 - Explicit independent variable with units
 - Explicit dependent variable with units
 - Clear scope/range of investigation
 - Measurable quantities
 
-Return ONLY the research question as a single sentence. Do not include any additional text or explanation.
+Return EXACTLY TWO lines, each with one RQ, using the following format:
+1. <RQ sentence>
+2. <RQ sentence>
+
+Do not include any additional text or explanation.
 """
 
 IB_BACKGROUND_PROMPT_PHYSICS = """You are writing the Background Information section for an IBDP Physics Internal Assessment.
@@ -831,12 +835,15 @@ RESEARCH BRIEF (use this as context):
 RETRIEVED CITATIONS (optional):
 {citations}
 
+RETRIEVED KNOWLEDGE (optional):
+{retrieved_knowledge}
+
 Your task is to write a Background Information section (2-3 paragraphs) that includes:
 1. Scientific context and theoretical background relevant to the investigation
 2. Personal interest or motivation for choosing this topic
 3. Significance of the investigation
 
-Use the Research Brief above as context to inform your writing. The Background Information should be consistent with and build upon the ideas in the Research Brief.
+Use the Research Brief above as context to inform your writing. If Retrieved Knowledge is provided, use it to ground your explanations. The Background Information should be consistent with and build upon the ideas in the Research Brief.
 
 IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
 
@@ -859,13 +866,16 @@ RESEARCH BRIEF (use this as context):
 RETRIEVED CITATIONS (optional):
 {citations}
 
+RETRIEVED KNOWLEDGE (optional):
+{retrieved_knowledge}
+
 Your task is to write a detailed Procedure section in IB style that includes:
 1. Step-by-step experimental procedure
 2. Clear instructions for data collection
 3. Safety considerations
 4. Equipment setup and configuration
 
-Use the Research Brief above as context to inform your writing. The Procedure should be consistent with the methodology described in the Research Brief.
+Use the Research Brief above as context to inform your writing. If Retrieved Knowledge is provided, use it to ground your explanations. The Procedure should be consistent with the methodology described in the Research Brief.
 
 IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
 
@@ -888,6 +898,9 @@ RESEARCH BRIEF (use this as context):
 RETRIEVED CITATIONS (optional):
 {citations}
 
+RETRIEVED KNOWLEDGE (optional):
+{retrieved_knowledge}
+
 Your task is to write a Research Design section that includes:
 1. **Materials/Equipment List**: Complete list of all equipment and materials needed with specifications
 2. **Variables Table**: Detailed table with:
@@ -898,7 +911,7 @@ Your task is to write a Research Design section that includes:
      * How it's controlled (method)
      * Why it's controlled (reason)
 
-Use the Research Brief above as context to inform your writing. The Research Design should be consistent with the methodology and variables described in the Research Brief.
+Use the Research Brief above as context to inform your writing. If Retrieved Knowledge is provided, use it to ground your explanations. The Research Design should be consistent with the methodology and variables described in the Research Brief.
 
 IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
 

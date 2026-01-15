@@ -613,20 +613,8 @@
                         <img src="{{ url_for('static', filename='icons/auto.svg') }}" alt="Auto">
                         <span>Automate Generation</span>
                     </button>
-                    <button onclick="stepAction('prev')">
-                        <img src="{{ url_for('static', filename='icons/prev.svg') }}" alt="Previous">
-                    </button>
-                    <button onclick="stepAction('next')">
-                        <img src="{{ url_for('static', filename='icons/next.svg') }}" alt="Next">
-                    </button>
-                    <button onclick="stepAction('judge')">
-                        <img src="{{ url_for('static', filename='icons/judge.svg') }}" alt="Judge">
-                    </button>
                     <button onclick="toggleTree()">
                         <img src="{{ url_for('static', filename='icons/tree.svg') }}" alt="Tree">
-                    </button>
-                    <button onclick="showApiKeyModal()">
-                        <img src="{{ url_for('static', filename='icons/Key.svg') }}" alt="API Keys">
                     </button>
                 </div>
             </div>
@@ -719,6 +707,7 @@
                         <div id="background-actions" class="section-buttons" style="display: flex; gap: 8px; margin-top: 10px;">
                             <button class="ia-section-action-btn secondary" data-section="background" onclick="editApprovedSection('background')">Edit</button>
                             <button class="ia-section-action-btn secondary" data-section="background" onclick="provideSectionFeedback('background')">Feedback</button>
+                            <button class="ia-section-action-btn secondary" data-section="background" onclick="retrieveKnowledgeForSection('background')">Retrieve Knowledge</button>
                         </div>
                     </div>
                     
@@ -729,6 +718,7 @@
                         <div id="procedure-actions" class="section-buttons" style="display: flex; gap: 8px; margin-top: 10px;">
                             <button class="ia-section-action-btn secondary" data-section="procedure" onclick="editApprovedSection('procedure')">Edit</button>
                             <button class="ia-section-action-btn secondary" data-section="procedure" onclick="provideSectionFeedback('procedure')">Feedback</button>
+                            <button class="ia-section-action-btn secondary" data-section="procedure" onclick="retrieveKnowledgeForSection('procedure')">Retrieve Knowledge</button>
                         </div>
                     </div>
                     
@@ -739,6 +729,7 @@
                         <div id="research_design-actions" class="section-buttons" style="display: flex; gap: 8px; margin-top: 10px;">
                             <button class="ia-section-action-btn secondary" data-section="research_design" onclick="editApprovedSection('research_design')">Edit</button>
                             <button class="ia-section-action-btn secondary" data-section="research_design" onclick="provideSectionFeedback('research_design')">Feedback</button>
+                            <button class="ia-section-action-btn secondary" data-section="research_design" onclick="retrieveKnowledgeForSection('research_design')">Retrieve Knowledge</button>
                         </div>
                     </div>
                 </div>

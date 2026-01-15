@@ -671,10 +671,11 @@ window.generateRQ = function generateRQ() {
             }),
             success: function(data) {
                 console.log('RQ generation success:', data);
-                // Always display the RQ, even if there are warnings
-                if (data.research_question) {
+                // Prefer multiple RQ options if available
+                if (Array.isArray(data.research_questions) && data.research_questions.length > 0) {
+                    renderRQChoices(data.research_questions);
+                } else if (data.research_question) {
                     displayRQ(data.research_question, data.warnings || [], data.is_valid);
-                    // Also display in chat area with approve/decline options
                     displayRQInChat(data.research_question, data.warnings || [], data.is_valid);
                 } else {
                     alert('No research question was generated. Please try again.');
@@ -804,6 +805,26 @@ function displayRQInChat(rq, warnings, is_valid) {
     
     // Scroll to bottom
     chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+}
+
+function renderRQChoices(rqOptions) {
+    if (!Array.isArray(rqOptions) || rqOptions.length === 0) {
+        return false;
+    }
+    // Hide right panel RQ display until a choice is approved
+    $('#rq-display').hide();
+    $('#rq-warnings').empty().hide();
+    $('#expand-buttons').hide();
+
+    rqOptions.forEach((option) => {
+        const text = option.text || option.research_question || '';
+        const warnings = option.warnings || [];
+        const isValid = option.is_valid !== false;
+        if (text) {
+            displayRQInChat(text, warnings, isValid);
+        }
+    });
+    return true;
 }
 
 function editRQ(rqCard, rq, warnings, is_valid) {
@@ -1007,10 +1028,14 @@ function submitRQFeedback(rq, feedback, warnings) {
                 previous_rq: rq
             }),
             success: function(data) {
-                // Show new RQ in chat
-                displayRQInChat(data.research_question, data.warnings || [], data.is_valid);
-                // Update sidebar
-                displayRQ(data.research_question, data.warnings || [], data.is_valid);
+                if (Array.isArray(data.research_questions) && data.research_questions.length > 0) {
+                    renderRQChoices(data.research_questions);
+                } else {
+                    // Show new RQ in chat
+                    displayRQInChat(data.research_question, data.warnings || [], data.is_valid);
+                    // Update sidebar
+                    displayRQ(data.research_question, data.warnings || [], data.is_valid);
+                }
                 
                 const chatArea = $("#chat-box");
                 const feedbackMsg = $('<div></div>')
@@ -1053,7 +1078,8 @@ function expandSection(section) {
         contentType: 'application/json',
         data: JSON.stringify({
             ia_topic: iaTopic,
-            research_question: rq
+            research_question: rq,
+            auto_retrieve: true
         }),
         success: function(data) {
             btn.prop('disabled', false).text(originalText);
@@ -1069,6 +1095,16 @@ function expandSection(section) {
         }
     });
 }
+
+// Section-specific knowledge retrieval (uses literature panel query flow)
+window.retrieveKnowledgeForSection = function(section) {
+    if (window.retrieval && typeof retrieval.generateQuery === 'function') {
+        retrieval.generateQuery(section);
+        return;
+    }
+    console.error('Retrieval module not available');
+    alert('Retrieval module not available yet. Please try again.');
+};
 
 function displaySectionInChat(section, content, citations) {
     const chatArea = $("#chat-box");

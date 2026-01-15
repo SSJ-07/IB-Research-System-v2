@@ -503,31 +503,43 @@ class IdeationAgent(BaseAgent):
         elif action == "expand_background":
             ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)
             research_question = state.get("research_question") or (getattr(current_state, "research_question", None) if current_state else None)
+            research_brief = state.get("research_brief", "")
             citations = state.get("citations", "")
+            retrieved_knowledge = state.get("retrieved_knowledge", "")
             return prompts.get("expand_background", "").format(
                 ia_topic=ia_topic or "",
                 research_question=research_question or "",
-                citations=citations
+                research_brief=research_brief or "",
+                citations=citations,
+                retrieved_knowledge=retrieved_knowledge
             )
         
         elif action == "expand_procedure":
             ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)
             research_question = state.get("research_question") or (getattr(current_state, "research_question", None) if current_state else None)
+            research_brief = state.get("research_brief", "")
             citations = state.get("citations", "")
+            retrieved_knowledge = state.get("retrieved_knowledge", "")
             return prompts.get("expand_procedure", "").format(
                 ia_topic=ia_topic or "",
                 research_question=research_question or "",
-                citations=citations
+                research_brief=research_brief or "",
+                citations=citations,
+                retrieved_knowledge=retrieved_knowledge
             )
         
         elif action == "expand_research_design":
             ia_topic = state.get("ia_topic") or (getattr(current_state, "ia_topic", None) if current_state else None)
             research_question = state.get("research_question") or (getattr(current_state, "research_question", None) if current_state else None)
+            research_brief = state.get("research_brief", "")
             citations = state.get("citations", "")
+            retrieved_knowledge = state.get("retrieved_knowledge", "")
             return prompts.get("expand_research_design", "").format(
                 ia_topic=ia_topic or "",
                 research_question=research_question or "",
-                citations=citations
+                research_brief=research_brief or "",
+                citations=citations,
+                retrieved_knowledge=retrieved_knowledge
             )
         
         elif action == "generate_query":

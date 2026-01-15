@@ -141,10 +141,10 @@ else:
     if not azure_endpoint:
         logger.warning("AZURE_OPENAI_ENDPOINT not set while in deployment mode")
 
-retriever = FullTextRetriever(n_retrieval=10, n_keyword_srch=10)
+retriever = FullTextRetriever(n_retrieval=20, n_keyword_srch=20)
 # paper_finder = PaperFinder(retriever, context_threshold=0.1)
 reranker = HuggingFaceReranker(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2", batch_size=256)
-paper_finder = PaperFinderWithReranker(retriever, reranker=reranker, n_rerank=5, context_threshold=0.1)
+paper_finder = PaperFinderWithReranker(retriever, reranker=reranker, n_rerank=10, context_threshold=0.1)
 scholar_qa = ScholarQA(paper_finder=paper_finder, llm_model="gemini/gemini-2.0-flash-lite")
 
 # API Key management endpoints with improved security
@@ -2298,9 +2298,12 @@ def retrieve_knowledge():
         sections_count = len(formatted_sections)
         citations_count = sum(len(section["citations"]) for section in formatted_sections)
         
+        note = ""
+        if citations_count < 5:
+            note = "\n\nNote: Fewer than 5 papers were found. Try a broader or alternative query for more results."
         chat_messages.append({
             "role": "assistant",
-            "content": f"✅ **Retrieval complete!** Found {sections_count} content sections with {citations_count} paper citations.\n\nPlease check the left panel to see the retrieved information."
+            "content": f"✅ **Retrieval complete!** Found {sections_count} content sections with {citations_count} paper citations.\n\nPlease check the left panel to see the retrieved information.{note}"
         })
         
         return jsonify({
@@ -2645,6 +2648,30 @@ def get_physics_topics():
         logger.error(f"Error loading physics topics: {str(e)}")
         return jsonify({"error": f"Failed to load topics: {str(e)}"}), 500
 
+def parse_rq_candidates(content: str):
+    """Parse multiple RQ candidates from model output."""
+    if not content:
+        return []
+    candidates = []
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    for line in lines:
+        match = re.match(r"^\s*\d+[\).:\-]\s*(.+)$", line)
+        if match:
+            candidates.append(match.group(1).strip())
+    if not candidates:
+        inline_matches = re.findall(r"\d+[\).:\-]\s*([^\n]+)", content)
+        candidates = [m.strip() for m in inline_matches if m.strip()]
+    if not candidates and content.strip():
+        candidates = [content.strip()]
+    # Deduplicate while preserving order
+    seen = set()
+    unique = []
+    for item in candidates:
+        if item and item not in seen:
+            seen.add(item)
+            unique.append(item)
+    return unique[:2]
+
 @app.route("/api/generate_rq", methods=["POST"])
 def generate_rq():
     """Generate hyper-specific RQ from IA topic."""
@@ -2685,26 +2712,37 @@ def generate_rq():
             }
         )
         
-        rq = response.get("content", "").strip()
-        
-        # Validate RQ format (but don't fail if validation has issues)
-        is_valid = True
-        warnings = []
-        try:
-            is_valid, warnings, rewritten_rq = validate_rq_format(rq, subject or "physics", "ia")
-        except Exception as validation_error:
-            logger.warning(f"RQ validation error (non-fatal): {str(validation_error)}")
-            # Continue with the generated RQ even if validation fails
-            warnings = ["Validation check encountered an error, but RQ was generated successfully."]
-        
-        # Update state
-        current_node.state.research_question = rq
+        content = response.get("content", "").strip()
+        candidates = parse_rq_candidates(content)
+        if not candidates:
+            return jsonify({"error": "No research question was generated."}), 500
+
+        rq_results = []
+        for rq in candidates:
+            is_valid = True
+            warnings = []
+            try:
+                is_valid, warnings, _ = validate_rq_format(rq, subject or "physics", "ia")
+            except Exception as validation_error:
+                logger.warning(f"RQ validation error (non-fatal): {str(validation_error)}")
+                warnings = ["Validation check encountered an error, but RQ was generated successfully."]
+            rq_results.append({
+                "text": rq,
+                "is_valid": is_valid,
+                "warnings": warnings
+            })
+
+        # Update state only when a single RQ is returned (approval sets it otherwise)
+        if len(rq_results) == 1:
+            current_node.state.research_question = rq_results[0]["text"]
         current_node.state.ia_topic = ia_topic
         
+        primary = rq_results[0] if rq_results else {"text": "", "is_valid": True, "warnings": []}
         return jsonify({
-            "research_question": rq,
-            "is_valid": is_valid,
-            "warnings": warnings
+            "research_questions": rq_results,
+            "research_question": primary["text"],
+            "is_valid": primary["is_valid"],
+            "warnings": primary["warnings"]
         })
     
     except Exception as e:
@@ -2778,6 +2816,89 @@ def generate_citation_query(section_type: str, ia_topic: str, rq: str) -> str:
     else:
         return f"Relevant research papers for {ia_topic} and {rq}"
 
+def normalize_author(authors):
+    """Normalize authors list/string into a single author reference."""
+    if isinstance(authors, list):
+        names = []
+        for author in authors:
+            if isinstance(author, dict):
+                name = author.get("name", "")
+            elif hasattr(author, "name"):
+                name = author.name
+            else:
+                name = str(author)
+            if name:
+                names.append(name)
+        if not names:
+            return "Unknown"
+        return f"{names[0]} et al." if len(names) > 1 else names[0]
+    if isinstance(authors, str):
+        return authors
+    return "Unknown"
+
+def retrieve_section_knowledge(section: str, ia_topic: str, research_question: str, additional_context: str = ""):
+    """Retrieve section-specific knowledge and citations from ScholarQA."""
+    query = generate_citation_query(section, ia_topic, research_question)
+    if additional_context:
+        query = f"{query} {additional_context}"
+
+    try:
+        result = scholar_qa.answer_query(query)
+    except Exception as e:
+        logger.error(f"Error retrieving knowledge for {section}: {str(e)}")
+        return "", []
+
+    sections = result.get("sections", []) if isinstance(result, dict) else getattr(result, "sections", [])
+    retrieved_content = []
+    citations_list = []
+
+    for sec in sections:
+        if isinstance(sec, dict):
+            section_dict = sec
+        else:
+            section_dict = sec.model_dump() if hasattr(sec, "model_dump") else sec.dict() if hasattr(sec, "dict") else {}
+
+        section_text = section_dict.get("text", "")
+        if section_text:
+            title = section_dict.get("title", "Untitled")
+            retrieved_content.append(f"## {title}\n\n{section_text}")
+
+        for citation in section_dict.get("citations", []):
+            if isinstance(citation, dict):
+                citation_dict = citation
+            else:
+                citation_dict = citation.model_dump() if hasattr(citation, "model_dump") else citation.dict() if hasattr(citation, "dict") else {}
+
+            paper = citation_dict.get("paper", {})
+            if not isinstance(paper, dict):
+                paper = paper.model_dump() if hasattr(paper, "model_dump") else paper.dict() if hasattr(paper, "dict") else {}
+
+            author = normalize_author(paper.get("authors"))
+            year = paper.get("year")
+
+            if not author or author in ("N/A", "Unknown") or not year or year == "N/A":
+                continue
+
+            paper_url = ""
+            if paper.get("openAccessPdf") and paper["openAccessPdf"].get("url"):
+                paper_url = paper["openAccessPdf"]["url"]
+            elif paper.get("url"):
+                paper_url = paper["url"]
+            elif paper.get("corpus_id"):
+                paper_url = f"https://www.semanticscholar.org/paper/{paper['corpus_id']}"
+
+            citations_list.append({
+                "id": citation_dict.get("id", ""),
+                "author": author,
+                "year": year,
+                "title": paper.get("title", "Untitled"),
+                "corpus_id": paper.get("corpus_id", ""),
+                "citation_count": paper.get("citation_count", 0),
+                "url": paper_url
+            })
+
+    return "\n\n".join(retrieved_content), citations_list[:10]
+
 def retrieve_citations_for_section(query: str):
     """Retrieve citations using ScholarQA and format them."""
     try:
@@ -2794,10 +2915,10 @@ def retrieve_citations_for_section(query: str):
                     citation_id = citation.get("id", "")
                     
                     # Validate paper metadata to avoid N/A hallucinations
-                    author = paper.get("authors")
+                    author = normalize_author(paper.get("authors"))
                     year = paper.get("year")
                     
-                    if not author or author == "N/A" or not year or year == "N/A":
+                    if not author or author in ("N/A", "Unknown") or not year or year == "N/A":
                         continue
                         
                     # Get paper URL (try openAccessPdf first, then regular url)
@@ -2811,7 +2932,7 @@ def retrieve_citations_for_section(query: str):
                     
                     citations.append({
                         "id": citation_id,
-                        "author": author if isinstance(author, str) else "Unknown",
+                        "author": author,
                         "year": year,
                         "title": paper.get("title", "Untitled"),
                         "corpus_id": paper.get("corpus_id", ""),
@@ -2845,15 +2966,19 @@ def expand_background():
     research_question = data["research_question"]
     feedback = data.get("feedback")
     previous_content = data.get("previous_content")
+    auto_retrieve = data.get("auto_retrieve", True)
     
     try:
         global current_node
         if not current_node:
             return jsonify({"error": "No current node found"}), 400
         
-        # Retrieve citations
-        query = generate_citation_query("background", ia_topic, research_question)
-        citations_list = retrieve_citations_for_section(query)
+        retrieved_knowledge = ""
+        if auto_retrieve:
+            retrieved_knowledge, citations_list = retrieve_section_knowledge("background", ia_topic, research_question)
+        else:
+            query = generate_citation_query("background", ia_topic, research_question)
+            citations_list = retrieve_citations_for_section(query)
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
         # Get research brief content
@@ -2865,6 +2990,7 @@ def expand_background():
             "research_question": research_question,
             "research_brief": research_brief,
             "citations": citations_str,
+            "retrieved_knowledge": retrieved_knowledge,
             "current_state": current_node.state,
             "subject": current_node.state.subject
         }
@@ -2889,7 +3015,8 @@ def expand_background():
         
         return jsonify({
             "content": content,
-            "citations": citations_list
+            "citations": citations_list,
+            "retrieved_knowledge": retrieved_knowledge
         })
     
     except Exception as e:
@@ -2909,15 +3036,19 @@ def expand_procedure():
     research_question = data["research_question"]
     feedback = data.get("feedback")
     previous_content = data.get("previous_content")
+    auto_retrieve = data.get("auto_retrieve", True)
     
     try:
         global current_node
         if not current_node:
             return jsonify({"error": "No current node found"}), 400
         
-        # Retrieve citations
-        query = generate_citation_query("procedure", ia_topic, research_question)
-        citations_list = retrieve_citations_for_section(query)
+        retrieved_knowledge = ""
+        if auto_retrieve:
+            retrieved_knowledge, citations_list = retrieve_section_knowledge("procedure", ia_topic, research_question)
+        else:
+            query = generate_citation_query("procedure", ia_topic, research_question)
+            citations_list = retrieve_citations_for_section(query)
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
         # Get research brief content
@@ -2930,6 +3061,7 @@ def expand_procedure():
             "research_question": research_question,
             "research_brief": research_brief,
             "citations": citations_str,
+            "retrieved_knowledge": retrieved_knowledge,
             "current_state": current_node.state,
             "subject": current_node.state.subject
         }
@@ -2953,7 +3085,8 @@ def expand_procedure():
         
         return jsonify({
             "content": content,
-            "citations": citations_list
+            "citations": citations_list,
+            "retrieved_knowledge": retrieved_knowledge
         })
     
     except Exception as e:
@@ -2973,15 +3106,19 @@ def expand_research_design():
     research_question = data["research_question"]
     feedback = data.get("feedback")
     previous_content = data.get("previous_content")
+    auto_retrieve = data.get("auto_retrieve", True)
     
     try:
         global current_node
         if not current_node:
             return jsonify({"error": "No current node found"}), 400
         
-        # Retrieve citations
-        query = generate_citation_query("research_design", ia_topic, research_question)
-        citations_list = retrieve_citations_for_section(query)
+        retrieved_knowledge = ""
+        if auto_retrieve:
+            retrieved_knowledge, citations_list = retrieve_section_knowledge("research_design", ia_topic, research_question)
+        else:
+            query = generate_citation_query("research_design", ia_topic, research_question)
+            citations_list = retrieve_citations_for_section(query)
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
         # Get research brief content
@@ -2994,6 +3131,7 @@ def expand_research_design():
             "research_question": research_question,
             "research_brief": research_brief,
             "citations": citations_str,
+            "retrieved_knowledge": retrieved_knowledge,
             "current_state": current_node.state,
             "subject": current_node.state.subject
         }
@@ -3017,7 +3155,8 @@ def expand_research_design():
         
         return jsonify({
             "content": content,
-            "citations": citations_list
+            "citations": citations_list,
+            "retrieved_knowledge": retrieved_knowledge
         })
     
     except Exception as e:
@@ -3124,10 +3263,10 @@ def improve_section_with_knowledge():
                     citation_id = citation.get("id", "")
                     
                     # Validate paper metadata to avoid N/A hallucinations
-                    author = paper.get("authors")
+                    author = normalize_author(paper.get("authors"))
                     year = paper.get("year")
                     
-                    if not author or author == "N/A" or not year or year == "N/A":
+                    if not author or author in ("N/A", "Unknown") or not year or year == "N/A":
                         continue
                         
                     # Get paper URL
@@ -3141,7 +3280,7 @@ def improve_section_with_knowledge():
                     
                     citations_list.append({
                         "id": citation_id,
-                        "author": author if isinstance(author, str) else "Unknown",
+                        "author": author,
                         "year": year,
                         "title": paper.get("title", "Untitled"),
                         "corpus_id": paper.get("corpus_id", ""),
