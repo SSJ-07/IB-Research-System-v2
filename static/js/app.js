@@ -20,9 +20,8 @@ window.sendMessage = function sendMessage() {
         input.attr("placeholder", "Provide feedback or suggestions to refine your research idea...");
     }
 
-    // Hide placeholder messages and show content areas
-    $("#brief-placeholder").hide();
-    $("#main-idea").removeAttr('style').addClass('active');
+    // Ensure Research Brief tab is active
+    switchTab('research-brief');
     showGenerateRQButton();
 
     // Disable input while processing
@@ -201,14 +200,59 @@ $(document).ready(function () {
     // (e.g., after generation, refresh, or node selection)
     // setInterval(loadIdea, 5000); // REMOVED - was causing constant polling
     
-    // Add CSS for score display
-    addScoreDisplayStyles();
-    
     // Check if the MCTS auto module has a toggleAutoGenerate function and use it
     if (typeof window.toggleAutoGenerate === 'function') {
         // Store a reference to the MCTS auto implementation
         toggleFromAutoGenerate = window.toggleAutoGenerate;
     }
+
+    // Connect main RQ button to generateRQ - use event delegation to ensure it works even if button is dynamically shown
+    $(document).on('click', '#generate-rq-btn-main', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Generate RQ button clicked');
+        generateRQ();
+        return false;
+    });
+    
+    $(document).on('click', '.expand-section-btn', function() {
+        const section = $(this).data('section');
+        expandSection(section);
+    });
+
+    $(document).on('click', '.retrieve-citations-btn', function() {
+        const section = $(this).data('section');
+        retrieveCitations(section);
+    });
+
+    // Tab buttons
+    $(document).on('click', '#tab-research-brief', function(e) {
+        e.preventDefault();
+        console.log('Research Brief tab button clicked');
+        // Visual feedback
+        $(this).css('opacity', '0.5');
+        setTimeout(() => $(this).css('opacity', ''), 100);
+        switchTab('research-brief');
+    });
+    
+    $(document).on('click', '#tab-ia-section', function(e) {
+        e.preventDefault();
+        console.log('IA Section tab button clicked');
+        // Visual feedback
+        $(this).css('opacity', '0.5');
+        setTimeout(() => $(this).css('opacity', ''), 100);
+        switchTab('ia-section');
+    });
+
+    // Initialization for tabs
+    $('#tab-research-brief').show();
+    $('#tab-ia-section').show();
+    $('#main-idea').show().addClass('active');
+    $('#ia-sections-panel').hide().removeClass('active');
+    
+    // #region agent log
+    console.log('Event handlers consolidated and attached.');
+    // #endregion
 });
 
 // Configure marked for safe rendering
@@ -565,25 +609,31 @@ function generateIATopic() {
 function displayIATopic(content) {
     $('#ia-topic-content').html(formatMessage(content));
     $('#ia-topic-display').show();
-    $('#ia-sections-panel').show().removeClass('active');
-    $('#main-idea').addClass('active');
+    
+    // Show IA sections tab button and switch to research brief (initial state)
     $('#tab-ia-section').show();
-    switchTab('research-brief'); // Keep Research Brief active initially
+    switchTab('research-brief');
 }
 
 // Make generateRQ globally accessible
 window.generateRQ = function generateRQ() {
     console.log('generateRQ called');
     
-    // Get button and store original text BEFORE any early returns
+    // Get button and store original text
     const btn = $('#generate-rq-btn-main');
     if (!btn.length) {
         console.error('Generate RQ button not found');
         return;
     }
     
-    // Store original text, defaulting to "Generate Research Question" if empty
-    const originalText = btn.text().trim() || 'Generate Research Question';
+    // Check if already generating
+    if (btn.prop('disabled')) {
+        console.log('Already generating RQ, ignoring request');
+        return;
+    }
+    
+    // Use a hardcoded original text to prevent getting stuck on "Generating..."
+    const originalText = 'Generate Research Question';
     
     // Helper function to reset button state
     const resetButton = function() {
@@ -603,7 +653,6 @@ window.generateRQ = function generateRQ() {
     
     if (!researchContent || researchContent.trim().length === 0) {
         alert('Please generate a research brief first.');
-        // Don't reset button here since we never started generating
         return;
     }
     
@@ -644,14 +693,25 @@ window.generateRQ = function generateRQ() {
     
     // Load all topics from syllabus for physics
     if (selectedSubject === 'physics') {
+        let callbackFired = false;
+        const timeout = setTimeout(function() {
+            if (!callbackFired) {
+                console.warn('loadAllPhysicsTopics timeout, proceeding without topics');
+                sendRQRequest([]);
+            }
+        }, 5000); // 5 second timeout
+        
         try {
             loadAllPhysicsTopics(function(allTopics) {
+                callbackFired = true;
+                clearTimeout(timeout);
                 console.log('Loaded all physics topics from syllabus:', allTopics.length);
                 sendRQRequest(allTopics);
             });
         } catch (error) {
+            callbackFired = true;
+            clearTimeout(timeout);
             console.error('Error loading physics topics:', error);
-            // Fallback: proceed without topics
             sendRQRequest([]);
         }
     } else {
@@ -664,14 +724,8 @@ function displayRQ(rq, warnings, is_valid) {
     $('#rq-content').text(rq);
     $('#rq-display').show();
     
-    // Show IA sections panel (but keep Research Brief active initially)
-    $('#ia-sections-panel').show().removeClass('active');
-    $('#main-idea').addClass('active');
-    
-    // Show IA Section tab button
+    // Show IA sections tab button and switch to research brief (initial state)
     $('#tab-ia-section').show();
-    
-    // Ensure Research Brief tab is active
     switchTab('research-brief');
     
     // Show validation status
@@ -812,11 +866,8 @@ function handleRQApproval(rq) {
     // Hide all other RQ cards in chat
     $('.rq-card').fadeOut(300, function() { $(this).remove(); });
     
-    // Ensure IA sections panel is visible
-    $('#ia-sections-panel').show();
+    // Ensure IA sections tab button is visible and switch to IA Section tab
     $('#tab-ia-section').show();
-    
-    // Switch to IA Section tab when RQ is approved
     switchTab('ia-section');
     
     // Update the RQ in the sidebar with consistent styling
@@ -1356,34 +1407,6 @@ function toggleSection(section) {
 }
 
 // Event handlers
-$(document).ready(function() {
-    // Connect main RQ button to generateRQ - use event delegation to ensure it works even if button is dynamically shown
-    $(document).on('click', '#generate-rq-btn-main', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Generate RQ button clicked');
-        generateRQ();
-        return false;
-    });
-    
-    // Also attach directly to the button as a fallback
-    $('#generate-rq-btn-main').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Generate RQ button clicked (direct handler)');
-        generateRQ();
-        return false;
-    });
-    $('.expand-section-btn').on('click', function() {
-        const section = $(this).data('section');
-        expandSection(section);
-    });
-    $('.retrieve-citations-btn').on('click', function() {
-        const section = $(this).data('section');
-        retrieveCitations(section);
-    });
-});
-
 function retrieveCitations(section) {
     const iaTopic = $('#ia-topic-content').text();
     const rq = $('#rq-content').text();
@@ -2779,31 +2802,6 @@ function unescape(str) {
 }
 
 // Add CSS for accepted highlights
-function addCssRules() {
-    const style = document.createElement('style');
-    style.textContent = `
-        .review-highlight.accepted {
-            background-color: rgba(134, 239, 172, 0.4); /* light green */
-            cursor: default;
-        }
-        .review-highlight.accepted:hover {
-            background-color: rgba(134, 239, 172, 0.4); /* prevent hover effect */
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-// Call this on document ready
-$(document).ready(function() {
-    // ...existing code...
-    addCssRules();
-    
-    // DO NOT attach event handlers here - the review-integration.js handles these
-    // The click handler for Generate Review button is now defined in review-integration.js
-    
-    // Any other initialization code...
-});
-
 // Update requestAspectReview to use the state object
 function requestAspectReview(aspectIndex) {
     console.log("Requesting review for aspect index:", aspectIndex);
@@ -3339,41 +3337,6 @@ function triggerRefreshIdea() {
 //     return false;
 // }
 
-// Add CSS for score display
-function addScoreDisplayStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        .score-display {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background-color: #f0f9ff;
-            border: 1px solid #bae6fd;
-            border-radius: 8px;
-            padding: 5px 10px;
-            font-size: 14px;
-            font-weight: bold;
-            color: #0284c7;
-            z-index: 100;
-        }
-        
-        #current-score {
-            font-size: 16px;
-        }
-        
-        .score-flash {
-            animation: score-flash-animation 0.5s;
-        }
-        
-        @keyframes score-flash-animation {
-            0% { background-color: #f0f9ff; }
-            50% { background-color: #bae6fd; }
-            100% { background-color: #f0f9ff; }
-        }
-    `;
-    document.head.appendChild(style);
-}
-
 // Add this function to properly handle review data
 function updateReview(data) {
     // Check if we have review scores and update the display
@@ -3566,56 +3529,44 @@ function switchTab(tabName) {
     const iaSectionTab = $('#tab-ia-section');
     const mainIdea = $('#main-idea');
     const iaSections = $('#ia-sections-panel');
+    const placeholder = $('#brief-placeholder');
     
-    console.log('switchTab called with:', tabName);
-    console.log('Tab elements found:', {
-        researchBriefTab: researchBriefTab.length,
-        iaSectionTab: iaSectionTab.length,
-        mainIdea: mainIdea.length,
-        iaSections: iaSections.length
-    });
+    console.log('switchTab attempting transition to:', tabName);
     
     if (tabName === 'research-brief') {
         // Switch to Research Brief
         researchBriefTab.addClass('active');
         iaSectionTab.removeClass('active');
-        // Remove inline styles that override CSS, then use CSS class system
-        mainIdea.removeAttr('style').addClass('active');
-        iaSections.removeClass('active').removeAttr('style');
-        console.log('Switched to Research Brief');
+        
+        // Show Research Brief content
+        iaSections.hide().removeClass('active');
+        mainIdea.show().addClass('active');
+        
+        // Handle placeholder visibility
+        if (mainIdea.html().trim().length === 0 || mainIdea.is(':empty')) {
+            placeholder.show();
+        } else {
+            placeholder.hide();
+        }
+        
+        console.log('Switched to Research Brief UI state');
     } else if (tabName === 'ia-section') {
         // Switch to IA Section
         iaSectionTab.addClass('active');
         researchBriefTab.removeClass('active');
-        // Remove inline styles that override CSS, then use CSS class system
-        iaSections.removeAttr('style').addClass('active');
-        mainIdea.removeClass('active').removeAttr('style');
-        console.log('Switched to IA Section');
+        
+        // Show IA Section content
+        mainIdea.hide().removeClass('active');
+        placeholder.hide(); // Never show brief placeholder in IA section tab
+        iaSections.show().addClass('active');
+        
+        console.log('Switched to IA Section UI state');
     } else {
-        console.warn('Unknown tab name:', tabName);
+        console.warn('Unknown tab name provided to switchTab:', tabName);
     }
 }
 
 // Attach tab button handlers
-$(document).ready(function() {
-    // Use event delegation to handle clicks even if buttons are dynamically shown/hidden
-    $(document).on('click', '#tab-research-brief', function(e) {
-        e.preventDefault();
-        console.log('Research Brief tab clicked');
-        switchTab('research-brief');
-    });
-    
-    $(document).on('click', '#tab-ia-section', function(e) {
-        e.preventDefault();
-        console.log('IA Section tab clicked');
-        switchTab('ia-section');
-    });
-    
-    // #region agent log
-    console.log('Tab handlers attached. Final check - sendMessage available:', typeof window.sendMessage);
-    // #endregion
-});
-
 // #region agent log
 // Verify sendMessage is defined after script loads
 console.log('Script loaded. sendMessage defined:', typeof window.sendMessage);

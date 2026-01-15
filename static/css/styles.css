@@ -711,6 +711,7 @@ html {
     display: flex;
     flex-direction: column;
     border: none;
+    position: relative;
 }
 
 #main-idea {
@@ -2462,11 +2463,40 @@ hr {
 
 .score-display {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #334155;
+    top: 15px;
+    right: 15px;
+    background-color: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #0284c7;
+    z-index: 50; /* Lower than tab-header */
+    pointer-events: none; /* Let clicks pass through if somehow still overlapping */
+}
+
+#current-score {
+    font-size: 16px;
+}
+
+.score-flash {
+    animation: score-flash-animation 0.5s;
+}
+
+@keyframes score-flash-animation {
+    0% { background-color: #f0f9ff; }
+    50% { background-color: #bae6fd; }
+    100% { background-color: #f0f9ff; }
+}
+
+.review-highlight.accepted {
+    background-color: rgba(134, 239, 172, 0.4); /* light green */
+    cursor: default;
+}
+
+.review-highlight.accepted:hover {
+    background-color: rgba(134, 239, 172, 0.4); /* prevent hover effect */
 }
 
 /* Custom Editor Popup styles */
@@ -3313,6 +3343,8 @@ hr {
     align-items: center;
     gap: 8px;
     margin-bottom: 10px;
+    position: relative;
+    z-index: 200; /* Higher than score-display */
 }
 
 .tab-button {
