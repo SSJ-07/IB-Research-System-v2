@@ -655,7 +655,7 @@
                 <!-- Subject Selection Dropdown -->
                 <div class="subject-selector" style="display: flex; gap: 8px; margin-bottom: 4px; align-items: center; flex-wrap: nowrap;">
                     <select id="subject-select" class="compact-select" style="flex: 0 0 auto; padding: 8px 12px; border: 1px solid #e0e3e8; border-radius: 8px; background-color: #fff; font-size: 14px; color: #374151; cursor: pointer; width: auto; min-width: 130px;">
-                        <option value="">Select Subject</option>
+                        <option value="">Select Subject</option> 
                         <option value="physics">Physics</option>
                         <option value="chemistry">Chemistry</option>
                     </select>
@@ -670,26 +670,28 @@
 
         <!-- Right sidebar: Research Brief -->
         <div class="idea">
-            <div class="heading">Research Brief</div>
+            <div class="tab-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                <button class="tab-button active" id="tab-research-brief" data-tab="research-brief">
+                    Research Brief
+                </button>
+                <button class="tab-button" id="tab-ia-section" data-tab="ia-section" style="display: none;">
+                    IA Section
+                </button>
+            </div>
             <div id="score-display" class="score-display">
                 Score: <span id="current-score">-/10</span>
             </div>
             <div id="brief-placeholder" class="initial-message">
                 Your evolving research brief will appear here. Start by entering your initial research idea in the chat.
             </div>
-            <div id="main-idea" style="display: none;">
+            <div id="main-idea" class="tab-content active" style="display: none;">
                 <!-- Research Brief content -->
             </div>
             
-            <!-- Generate Research Question Button (shown after research brief is generated) -->
-            <div id="generate-rq-container" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e3e8;">
-                <button id="generate-rq-btn-main" class="btn btn-primary" onclick="generateRQ(); return false;" style="width: 100%; padding: 10px; font-size: 14px; font-weight: 500; border-radius: 8px; background-color: #007bff; color: white; border: none; cursor: pointer; transition: background-color 0.2s;">
-                    Generate Research Question
-                </button>
-            </div>
-            
-            <!-- Physics IA Specific Sections -->
-            <div id="physics-ia-sections" style="display: none;">
+            <!-- IA Sections Tab Content -->
+            <div id="ia-sections-panel" class="tab-content" style="display: none;">
+                <!-- Physics IA Specific Sections -->
+                <div id="physics-ia-sections">
                 <!-- IA Topic Display -->
                 <div id="ia-topic-display" class="rq-display-panel" style="display: none;">
                     <h3>IA Topic</h3>
@@ -731,7 +733,16 @@
                         <button class="retrieve-citations-btn" data-section="research_design">Retrieve More Citations</button>
                     </div>
                 </div>
+                </div>
             </div>
+            
+            <!-- Generate Research Question Button (fixed at bottom, outside resizable area) -->
+            <div id="generate-rq-container" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e3e8;">
+                <button id="generate-rq-btn-main" class="btn btn-primary" onclick="generateRQ(); return false;" style="width: 100%; padding: 10px; font-size: 14px; font-weight: 500; border-radius: 8px; background-color: #007bff; color: white; border: none; cursor: pointer; transition: background-color 0.2s;">
+                    Generate Research Question
+                </button>
+            </div>
+            
             <div class="review-feedback" id="review-feedback" style="display: none;">
                 <div class="review-info">
                     <div class="review-category" id="review-category">

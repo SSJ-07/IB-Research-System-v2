@@ -1,3 +1,129 @@
+// Define sendMessage early to ensure global accessibility
+// This must be defined before any HTML tries to use onclick="sendMessage()"
+// #region agent log
+console.log('Defining sendMessage on window object');
+// #endregion
+window.sendMessage = function sendMessage() {
+    // #region agent log
+    console.log('sendMessage function called');
+    // #endregion
+    var input = $("#chat-input");
+    var content = input.val().trim();
+    if (content === "") return;
+
+    // On first message, show proposal in sticky box and clear placeholder
+    const isFirstMessage = $("#welcome-message").is(":visible");
+    if (isFirstMessage) {
+        $("#welcome-message").hide();
+        $("#proposal-content").show().text(content);
+        $("#edit-button").show();
+        input.attr("placeholder", "Provide feedback or suggestions to refine your research idea...");
+    }
+
+    // Hide placeholder messages and show content areas
+    $("#brief-placeholder").hide();
+    $("#main-idea").removeAttr('style').addClass('active');
+    showGenerateRQButton();
+
+    // Disable input while processing
+    input.prop('disabled', true);
+    input.val('');
+
+    // Add user message to chat ONLY if it's not the first message
+    var chatArea = $("#chat-box");
+    if (!isFirstMessage) {
+        var userMessageDiv = $('<div></div>')
+            .attr('data-sender', 'user')
+            .text(content)
+            .hide();
+        chatArea.append(userMessageDiv);
+        userMessageDiv.slideDown();
+        chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+    }
+
+    // Add loading indicator
+    var loadingDiv = $('<div></div>')
+        .attr('data-sender', 'system')
+        .text('Processing...')
+        .hide();
+    chatArea.append(loadingDiv);
+    loadingDiv.slideDown();
+    chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+
+    $.ajax({
+        url: '/api/chat',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ 
+            content: content,
+            subject: selectedSubject  // Include selected subject
+        }),
+        success: function (data) {
+            // Remove loading indicator
+            loadingDiv.remove();
+
+            // Display system messages (like "Generating idea...")
+            if (data.messages && data.messages.length > 0) {
+                // Add all system messages that were added after user's message
+                const userMessageIndex = data.messages.findIndex(m =>
+                    m.role === 'user' && m.content === content);
+
+                if (userMessageIndex !== -1) {
+                    for (let i = userMessageIndex + 1; i < data.messages.length; i++) {
+                        const msg = data.messages[i];
+                        if (msg.role === 'system') {
+                            var systemMsgDiv = $('<div></div>')
+                                .attr('data-sender', 'system')
+                                .text(msg.content)
+                                .hide();
+                            chatArea.append(systemMsgDiv);
+                            systemMsgDiv.slideDown();
+                        }
+                    }
+                }
+
+                // Auto scroll to bottom
+                chatArea.scrollTop(chatArea[0].scrollHeight);
+            }
+
+            // Update main idea if provided
+            if (data.idea) {
+                // Parse and format any JSON structure in the idea
+                const structuredIdea = parseAndFormatStructuredIdea(data.idea);
+                $("#main-idea").html(prependFeedbackToIdea(formatMessage(structuredIdea), data.feedback));
+                $("#main-idea").removeAttr('style').addClass('active');
+                showGenerateRQButton();
+            }
+
+            // Show research brief buttons after first response
+            $(".research-brief-buttons").fadeIn();
+
+            if (data.average_score !== undefined) {
+                updateScoreDisplay(data.average_score);
+            }
+
+            // After successful idea generation, collapse physics topics if any
+        },
+        error: function (xhr, status, error) {
+            // Remove loading indicator
+            loadingDiv.remove();
+
+            var errorDiv = $('<div></div>')
+                .attr('data-sender', 'system')
+                .text('Error: ' + (xhr.responseJSON?.error || error))
+                .hide();
+            chatArea.append(errorDiv);
+            errorDiv.slideDown();
+            chatArea.scrollTop(chatArea[0].scrollHeight);
+        },
+        complete: function () {
+            // Re-enable input
+            input.prop('disabled', false);
+            input.focus();
+        }
+    });
+};
+
 // Initialize state object
 const state = {
     currentReviewAspectIndex: 0,
@@ -39,12 +165,21 @@ let selectedSubject = 'physics';
 let toggleFromAutoGenerate; 
 
 $(document).ready(function () {
+    // #region agent log
+    console.log('Document ready - checking sendMessage:', typeof window.sendMessage, typeof sendMessage);
+    // #endregion
     loadKnowledge();
     loadChat();
     loadIdea(true); // Initial load, don't overwrite highlights
     
     // Initialize subject selector
+    // #region agent log
+    console.log('Attaching subject select handler, element exists:', $('#subject-select').length > 0);
+    // #endregion
     $('#subject-select').on('change', function() {
+        // #region agent log
+        console.log('Subject select changed to:', $(this).val());
+        // #endregion
         const subject = $(this).val();
         selectedSubject = subject;
         saveSubject(subject);
@@ -53,6 +188,14 @@ $(document).ready(function () {
     
     // Load saved subject on page load
     loadSubject();
+    
+    // Add Enter key handler for chat input
+    $('#chat-input').on('keypress', function(e) {
+        if (e.which === 13 || e.keyCode === 13) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
 
     // Polling removed - loadIdea should only be called when idea is actually updated
     // (e.g., after generation, refresh, or node selection)
@@ -422,12 +565,32 @@ function generateIATopic() {
 function displayIATopic(content) {
     $('#ia-topic-content').html(formatMessage(content));
     $('#ia-topic-display').show();
-    $('#physics-ia-sections').show();
+    $('#ia-sections-panel').show().removeClass('active');
+    $('#main-idea').addClass('active');
+    $('#tab-ia-section').show();
+    switchTab('research-brief'); // Keep Research Brief active initially
 }
 
 // Make generateRQ globally accessible
 window.generateRQ = function generateRQ() {
     console.log('generateRQ called');
+    
+    // Get button and store original text BEFORE any early returns
+    const btn = $('#generate-rq-btn-main');
+    if (!btn.length) {
+        console.error('Generate RQ button not found');
+        return;
+    }
+    
+    // Store original text, defaulting to "Generate Research Question" if empty
+    const originalText = btn.text().trim() || 'Generate Research Question';
+    
+    // Helper function to reset button state
+    const resetButton = function() {
+        if (btn.length) {
+            btn.prop('disabled', false).text(originalText);
+        }
+    };
     
     // Get research brief content - try both IA topic and main idea
     let researchContent = $('#ia-topic-content').text();
@@ -440,12 +603,11 @@ window.generateRQ = function generateRQ() {
     
     if (!researchContent || researchContent.trim().length === 0) {
         alert('Please generate a research brief first.');
+        // Don't reset button here since we never started generating
         return;
     }
     
     // Show loading state
-    const btn = $('#generate-rq-btn-main');
-    const originalText = btn.text();
     btn.prop('disabled', true).text('Generating...');
     
     // Load all topics from syllabus if physics subject
@@ -468,24 +630,30 @@ window.generateRQ = function generateRQ() {
                 } else {
                     alert('No research question was generated. Please try again.');
                 }
-                btn.prop('disabled', false).text(originalText);
+                resetButton();
             },
             error: function(xhr) {
                 console.error('Error generating RQ:', xhr);
                 console.error('Response:', xhr.responseText);
                 const errorMsg = xhr.responseJSON?.error || xhr.statusText || 'Please try again.';
                 alert('Error generating Research Question: ' + errorMsg);
-                btn.prop('disabled', false).text(originalText);
+                resetButton();
             }
         });
     };
     
     // Load all topics from syllabus for physics
     if (selectedSubject === 'physics') {
-        loadAllPhysicsTopics(function(allTopics) {
-            console.log('Loaded all physics topics from syllabus:', allTopics.length);
-            sendRQRequest(allTopics);
-        });
+        try {
+            loadAllPhysicsTopics(function(allTopics) {
+                console.log('Loaded all physics topics from syllabus:', allTopics.length);
+                sendRQRequest(allTopics);
+            });
+        } catch (error) {
+            console.error('Error loading physics topics:', error);
+            // Fallback: proceed without topics
+            sendRQRequest([]);
+        }
     } else {
         // For non-physics subjects, proceed without topics
         sendRQRequest([]);
@@ -495,6 +663,16 @@ window.generateRQ = function generateRQ() {
 function displayRQ(rq, warnings, is_valid) {
     $('#rq-content').text(rq);
     $('#rq-display').show();
+    
+    // Show IA sections panel (but keep Research Brief active initially)
+    $('#ia-sections-panel').show().removeClass('active');
+    $('#main-idea').addClass('active');
+    
+    // Show IA Section tab button
+    $('#tab-ia-section').show();
+    
+    // Ensure Research Brief tab is active
+    switchTab('research-brief');
     
     // Show validation status
     if (is_valid === false) {
@@ -634,8 +812,12 @@ function handleRQApproval(rq) {
     // Hide all other RQ cards in chat
     $('.rq-card').fadeOut(300, function() { $(this).remove(); });
     
-    // Ensure physics-ia-sections container is visible
-    $('#physics-ia-sections').show();
+    // Ensure IA sections panel is visible
+    $('#ia-sections-panel').show();
+    $('#tab-ia-section').show();
+    
+    // Switch to IA Section tab when RQ is approved
+    switchTab('ia-section');
     
     // Update the RQ in the sidebar with consistent styling
     $('#rq-content').text(rq);
@@ -1286,6 +1468,7 @@ function loadIdea(isInitialLoad = false) {
 
 function showGenerateRQButton() {
     // Show the Generate RQ button if research brief is visible and has content
+    // Do NOT show bottom-panel or divider here - only show after RQ is generated
     if ($("#main-idea").is(":visible") && $("#main-idea").html().trim().length > 0) {
         $("#generate-rq-container").show();
     } else {
@@ -1293,135 +1476,8 @@ function showGenerateRQButton() {
     }
 }
 
-// Update chat input placeholder and message handling
-function sendMessage() {
-    var input = $("#chat-input");
-    var content = input.val().trim();
-    if (content === "") return;
-
-    // On first message, show proposal in sticky box and clear placeholder
-    const isFirstMessage = $("#welcome-message").is(":visible");
-    if (isFirstMessage) { // Check welcome message visibility instead of current_root
-        // Update the proposal box content
-        $("#welcome-message").hide();
-        $("#proposal-content").show().text(content);
-        $("#edit-button").show();
-        
-        // Change input placeholder for subsequent messages
-        input.attr("placeholder", "Provide feedback or suggestions to refine your research idea...");
-    }
-
-    // Hide placeholder messages and show content areas
-    $("#brief-placeholder").hide();
-    $("#main-idea").show();
-    showGenerateRQButton();
-
-    // Disable input while processing
-    input.prop('disabled', true);
-    input.val('');
-
-    // Add user message to chat ONLY if it's not the first message
-    var chatArea = $("#chat-box");
-    if (!isFirstMessage) {
-        var userMessageDiv = $('<div></div>')
-            .attr('data-sender', 'user')
-            .text(content)
-            .hide();
-        chatArea.append(userMessageDiv);
-        userMessageDiv.slideDown();
-        chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
-    }
-
-    // Add loading indicator
-    var loadingDiv = $('<div></div>')
-        .attr('data-sender', 'system')
-        .text('Processing...')
-        .hide();
-    chatArea.append(loadingDiv);
-    loadingDiv.slideDown();
-    chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
-
-    $.ajax({
-        url: '/api/chat',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ 
-            content: content,
-            subject: selectedSubject  // Include selected subject
-        }),
-        success: function (data) {
-            // Remove loading indicator
-            loadingDiv.remove();
-
-            // Display system messages (like "Generating idea...")
-            if (data.messages && data.messages.length > 0) {
-                // Add all system messages that were added after user's message
-                const userMessageIndex = data.messages.findIndex(m =>
-                    m.role === 'user' && m.content === content);
-
-                if (userMessageIndex !== -1) {
-                    for (let i = userMessageIndex + 1; i < data.messages.length; i++) {
-                        const msg = data.messages[i];
-                        if (msg.role === 'system') {
-                            var systemMsgDiv = $('<div></div>')
-                                .attr('data-sender', 'system')
-                                .text(msg.content)
-                                .hide();
-                            chatArea.append(systemMsgDiv);
-                            systemMsgDiv.slideDown();
-                        }
-                    }
-                }
-
-                // Auto scroll to bottom
-                chatArea.scrollTop(chatArea[0].scrollHeight);
-            }
-
-            // Update main idea if provided
-            if (data.idea) {
-                // Parse and format any JSON structure in the idea
-                const structuredIdea = parseAndFormatStructuredIdea(data.idea);
-                $("#main-idea").html(prependFeedbackToIdea(formatMessage(structuredIdea), data.feedback));
-                $("#main-idea").show();
-                showGenerateRQButton();
-            }
-
-            // Show research brief buttons after first response
-            $(".research-brief-buttons").fadeIn();
-
-            if (data.average_score !== undefined) {
-                updateScoreDisplay(data.average_score);
-            }
-
-            // After successful idea generation, collapse physics topics if any
-        },
-        error: function (xhr, status, error) {
-            // Remove loading indicator
-            loadingDiv.remove();
-
-            var errorDiv = $('<div></div>')
-                .attr('data-sender', 'system')
-                .text('Error: ' + (xhr.responseJSON?.error || error))
-                .hide();
-            chatArea.append(errorDiv);
-            errorDiv.slideDown();
-            chatArea.scrollTop(chatArea[0].scrollHeight);
-        },
-        complete: function () {
-            // Re-enable input
-            input.prop('disabled', false);
-            input.focus();
-        }
-    });
-}
-
-// Add Enter key handler for chat input
-$("#chat-input").keypress(function (e) {
-    if (e.which == 13 && !e.shiftKey) {  // Enter without Shift
-        e.preventDefault();
-        sendMessage();
-    }
-});
+// sendMessage is already defined at the top of the file (line 3) for global accessibility
+// Enter key handler is added inside $(document).ready() - see line 59
 
 //The function defined below uses the backend logic where the MCTS algorithm is implemented.
 function toggleAutoGenerate() {
@@ -3338,3 +3394,232 @@ function updateReview(data) {
 }
 
 window.toggleAutoGenerate = toggleAutoGenerate;
+
+// =============================================
+// Panel Resizer Functionality - Self-contained module
+// =============================================
+
+(function() {
+    // Use var to avoid TDZ issues - these are initialized immediately
+    var isResizing = false;
+    var startY = 0;
+    var startMainHeight = 0;
+    var startBottomHeight = 0;
+    
+    // Handle mouse move during resize
+    function handleMouseMove(e) {
+        if (!isResizing) return;
+        
+        var divider = $('#panel-divider');
+        var mainIdea = $('#main-idea');
+        var bottomPanel = $('#bottom-panel');
+        
+        var container = $('.idea');
+        var containerHeight = container.height();
+        var headerHeight = $('.heading').outerHeight() + $('#score-display').outerHeight() + 20;
+        var availableHeight = containerHeight - headerHeight - divider.outerHeight() - 50;
+        
+        var deltaY = e.clientY - startY;
+        
+        // Calculate new heights
+        var newMainHeight = startMainHeight + deltaY;
+        var newBottomHeight = startBottomHeight - deltaY;
+        
+        // Minimum heights
+        var minHeight = 150;
+        if (newMainHeight < minHeight) {
+            newMainHeight = minHeight;
+            newBottomHeight = availableHeight - newMainHeight;
+        }
+        if (newBottomHeight < minHeight) {
+            newBottomHeight = minHeight;
+            newMainHeight = availableHeight - newBottomHeight;
+        }
+        
+        // Maximum heights
+        if (newMainHeight > availableHeight - minHeight) {
+            newMainHeight = availableHeight - minHeight;
+            newBottomHeight = minHeight;
+        }
+        if (newBottomHeight > availableHeight - minHeight) {
+            newBottomHeight = availableHeight - minHeight;
+            newMainHeight = minHeight;
+        }
+        
+        // Apply new heights
+        mainIdea.css('flex', 'none');
+        bottomPanel.css('flex', 'none');
+        mainIdea.css('height', newMainHeight + 'px');
+        bottomPanel.css('height', newBottomHeight + 'px');
+        
+        // Store in localStorage for persistence
+        var splitRatio = newMainHeight / availableHeight;
+        localStorage.setItem('panelSplitRatio', splitRatio);
+    }
+    
+    // Handle mouse up - end resize
+    function handleMouseUp() {
+        if (isResizing) {
+            isResizing = false;
+            $('#panel-divider').removeClass('active');
+            $('body').css('user-select', '');
+            $('body').css('cursor', '');
+        }
+    }
+    
+    // Attach document-level handlers once on DOM ready
+    $(document).ready(function() {
+        $(document).on('mousemove', handleMouseMove);
+        $(document).on('mouseup', handleMouseUp);
+    });
+    
+    // Expose initializePanelResizer to window (disabled - using tab system instead)
+    window.initializePanelResizer = function() {
+        // Tab system is now used instead of resizable panels
+        // This function is kept for compatibility but does nothing
+        return;
+        
+        /* DISABLED - Tab system replaces resizer
+        var divider = $('#panel-divider');
+        var mainIdea = $('#main-idea');
+        var bottomPanel = $('#ia-sections-panel');
+        
+        // Check if elements exist and are visible
+        if (!divider.length || !mainIdea.length || !bottomPanel.length) {
+            console.warn('Panel resizer: Required elements not found');
+            return;
+        }
+        
+        // Remove any existing handlers to prevent duplicates
+        divider.off('mousedown.panelResizer');
+        
+        // Set initial 50/50 split if not already set
+        if (!mainIdea.data('initial-height-set')) {
+            // Use flex for equal split
+            mainIdea.css('flex', '1');
+            bottomPanel.css('flex', '1');
+            mainIdea.data('initial-height-set', true);
+        }
+        
+        // Mouse down handler - start resize
+        divider.on('mousedown.panelResizer', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (!mainIdea.is(':visible') || !bottomPanel.is(':visible')) {
+                return;
+            }
+            
+            isResizing = true;
+            divider.addClass('active');
+            
+            // Get current positions and heights
+            startY = e.clientY || e.pageY;
+            
+            // Get actual rendered heights
+            var mainIdeaRect = mainIdea[0].getBoundingClientRect();
+            var bottomPanelRect = bottomPanel[0].getBoundingClientRect();
+            
+            startMainHeight = mainIdeaRect.height;
+            startBottomHeight = bottomPanelRect.height;
+            
+            // Prevent text selection during resize
+            $('body').css('user-select', 'none');
+            $('body').css('cursor', 'row-resize');
+        });
+        
+        // Restore saved split ratio if available
+        var savedRatio = localStorage.getItem('panelSplitRatio');
+        if (savedRatio && parseFloat(savedRatio) > 0 && parseFloat(savedRatio) < 1) {
+            // Use setTimeout to ensure layout is ready
+            setTimeout(function() {
+                var container = $('.idea');
+                if (!container.length) return;
+                
+                var containerHeight = container.height();
+                var headerHeight = $('.heading').outerHeight() + $('#score-display').outerHeight() + 20;
+                var availableHeight = containerHeight - headerHeight - divider.outerHeight() - 50;
+                
+                if (availableHeight > 300) {
+                    var mainHeight = availableHeight * parseFloat(savedRatio);
+                    var bottomHeight = availableHeight - mainHeight;
+                    
+                    if (mainHeight >= 150 && bottomHeight >= 150) {
+                        mainIdea.css('flex', 'none');
+                        bottomPanel.css('flex', 'none');
+                        mainIdea.css('height', mainHeight + 'px');
+                        bottomPanel.css('height', bottomHeight + 'px');
+                    }
+                }
+            }, 100);
+        }
+        */
+    };
+})();
+
+// =============================================
+// Tab System Functionality
+// =============================================
+
+function switchTab(tabName) {
+    const researchBriefTab = $('#tab-research-brief');
+    const iaSectionTab = $('#tab-ia-section');
+    const mainIdea = $('#main-idea');
+    const iaSections = $('#ia-sections-panel');
+    
+    console.log('switchTab called with:', tabName);
+    console.log('Tab elements found:', {
+        researchBriefTab: researchBriefTab.length,
+        iaSectionTab: iaSectionTab.length,
+        mainIdea: mainIdea.length,
+        iaSections: iaSections.length
+    });
+    
+    if (tabName === 'research-brief') {
+        // Switch to Research Brief
+        researchBriefTab.addClass('active');
+        iaSectionTab.removeClass('active');
+        // Remove inline styles that override CSS, then use CSS class system
+        mainIdea.removeAttr('style').addClass('active');
+        iaSections.removeClass('active').removeAttr('style');
+        console.log('Switched to Research Brief');
+    } else if (tabName === 'ia-section') {
+        // Switch to IA Section
+        iaSectionTab.addClass('active');
+        researchBriefTab.removeClass('active');
+        // Remove inline styles that override CSS, then use CSS class system
+        iaSections.removeAttr('style').addClass('active');
+        mainIdea.removeClass('active').removeAttr('style');
+        console.log('Switched to IA Section');
+    } else {
+        console.warn('Unknown tab name:', tabName);
+    }
+}
+
+// Attach tab button handlers
+$(document).ready(function() {
+    // Use event delegation to handle clicks even if buttons are dynamically shown/hidden
+    $(document).on('click', '#tab-research-brief', function(e) {
+        e.preventDefault();
+        console.log('Research Brief tab clicked');
+        switchTab('research-brief');
+    });
+    
+    $(document).on('click', '#tab-ia-section', function(e) {
+        e.preventDefault();
+        console.log('IA Section tab clicked');
+        switchTab('ia-section');
+    });
+    
+    // #region agent log
+    console.log('Tab handlers attached. Final check - sendMessage available:', typeof window.sendMessage);
+    // #endregion
+});
+
+// #region agent log
+// Verify sendMessage is defined after script loads
+console.log('Script loaded. sendMessage defined:', typeof window.sendMessage);
+if (typeof window.sendMessage !== 'function') {
+    console.error('ERROR: sendMessage is not a function! Type:', typeof window.sendMessage);
+}
+// #endregion

@@ -3235,11 +3235,13 @@ hr {
 /* Right Panel Scrollable Container              */
 /* ============================================= */
 
+/* #bottom-panel renamed to #ia-sections-panel - see tab system styles above */
+
 #physics-ia-sections {
+    flex: 1;
     overflow-y: auto;
     padding-right: 5px;
-    margin-top: 15px;
-    max-height: calc(100vh - 300px);
+    margin-top: 0;
 }
 
 /* Custom scrollbar for physics-ia-sections */
@@ -3258,4 +3260,127 @@ hr {
 
 #physics-ia-sections::-webkit-scrollbar-thumb:hover {
     background: rgba(148, 163, 184, 0.5);
+}
+
+/* ============================================= */
+/* Resizable Panel Divider                        */
+/* ============================================= */
+
+.panel-divider {
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    cursor: row-resize;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10px 0;
+}
+
+.panel-divider:hover {
+    background: #cbd5e1;
+}
+
+.panel-divider.active {
+    background: #3b82f6;
+}
+
+.divider-handle {
+    width: 40px;
+    height: 4px;
+    background: #94a3b8;
+    border-radius: 2px;
+    transition: background 0.2s ease;
+}
+
+.panel-divider:hover .divider-handle {
+    background: #64748b;
+}
+
+.panel-divider.active .divider-handle {
+    background: #2563eb;
+}
+
+/* ============================================= */
+/* Tab System                                    */
+/* ============================================= */
+
+.tab-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.tab-button {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #475569;
+    white-space: nowrap;
+}
+
+/* Active tab - prominent */
+.tab-button.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Inactive tab - tiny */
+.tab-button:not(.active) {
+    background: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+    font-size: 0.75rem;
+    font-weight: 400;
+    padding: 6px 12px;
+    opacity: 0.7;
+}
+
+.tab-button:not(.active):hover {
+    opacity: 1;
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+
+.tab-button.active:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+}
+
+.tab-content {
+    flex: 1;
+    overflow-y: auto;
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Remove old resizer styles */
+.panel-divider {
+    display: none !important;
+}
+
+/* Update #ia-sections-panel (formerly #bottom-panel) */
+#ia-sections-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
 }
