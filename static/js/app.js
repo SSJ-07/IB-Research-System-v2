@@ -848,61 +848,33 @@ function displaySectionInChat(section, content, citations) {
     };
     const sectionName = sectionNames[section] || section;
     
-    // Create section display card
+    // Create section display card with consistent app styling
     const sectionCard = $(`
-        <div class="section-card" data-section="${section}" style="margin: 15px 0; padding: 20px; background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; flex: 1; color: #333;">${sectionName}</h3>
-                <span class="section-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #2196f3; color: white;">
-                    Draft
-                </span>
+        <div class="section-card" data-section="${section}">
+            <div class="section-card-header">
+                <h3>${sectionName}</h3>
+                <span class="section-status-badge">Draft</span>
             </div>
-            <div class="section-text" style="font-size: 14px; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #2196f3; white-space: pre-wrap;">
+            <div class="section-text">
                 ${formatMessage(content)}
             </div>
             ${citations && citations.length > 0 ? `
-                <div class="section-citations" style="margin-bottom: 15px; padding: 12px; background: #f5f5f5; border-radius: 6px;">
-                    <strong style="display: block; margin-bottom: 8px;">Citations:</strong>
+                <div class="section-citations-box">
+                    <strong>Citations:</strong>
                     ${citations.map(c => {
                         const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
-                        return `<div style="margin: 5px 0; padding: 5px; background: white; border-radius: 4px;">${citationStr}</div>`;
+                        return `<div class="section-citation-item">${citationStr}</div>`;
                     }).join('')}
                 </div>
             ` : ''}
-            <div class="section-actions" style="display: flex; gap: 10px; margin-top: 15px;">
-                <button class="section-edit-btn" style="flex: 1; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                    ✏️ Edit
-                </button>
-                <button class="section-approve-btn" style="flex: 1; padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                    ✓ Approve
-                </button>
-                <button class="section-decline-btn" style="flex: 1; padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                    ✗ Decline
-                </button>
-                <button class="section-feedback-btn" style="flex: 1; padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                    💬 Provide Feedback
-                </button>
+            <div class="section-actions">
+                <button class="rq-action-btn secondary section-edit-btn">Edit</button>
+                <button class="rq-action-btn primary section-approve-btn">Approve</button>
+                <button class="rq-action-btn danger section-decline-btn">Decline</button>
+                <button class="rq-action-btn secondary section-feedback-btn">Feedback</button>
             </div>
         </div>
     `);
-    
-    // Add hover effects
-    sectionCard.find('.section-edit-btn').hover(
-        function() { $(this).css('background', '#f57c00'); },
-        function() { $(this).css('background', '#ff9800'); }
-    );
-    sectionCard.find('.section-approve-btn').hover(
-        function() { $(this).css('background', '#45a049'); },
-        function() { $(this).css('background', '#4caf50'); }
-    );
-    sectionCard.find('.section-decline-btn').hover(
-        function() { $(this).css('background', '#da190b'); },
-        function() { $(this).css('background', '#f44336'); }
-    );
-    sectionCard.find('.section-feedback-btn').hover(
-        function() { $(this).css('background', '#0b7dda'); },
-        function() { $(this).css('background', '#2196f3'); }
-    );
     
     // Add click handlers
     sectionCard.find('.section-edit-btn').on('click', function() {
@@ -989,24 +961,40 @@ function editSection(sectionCard, section, content, citations) {
 }
 
 function handleSectionApproval(section, content, citations) {
+    const sectionNames = {
+        'background': 'Background Information',
+        'procedure': 'Procedure',
+        'research_design': 'Research Design'
+    };
+    const sectionName = sectionNames[section] || section;
+    
     // Update the section in the sidebar
     $(`#${section}-content`).html(content);
     $(`#${section}-section`).show();
     
-    // Display citations
+    // Display citations with consistent styling
     if (citations && citations.length > 0) {
         const citationsHtml = citations.map(c => {
             const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
-            return `<div style="margin: 5px 0; padding: 5px; background: #f0f0f0; border-radius: 4px;">${citationStr}</div>`;
+            return `<div class="section-citation-item">${citationStr}</div>`;
         }).join('');
-        $(`#${section}-citations`).html('<strong>Citations:</strong>' + citationsHtml);
+        $(`#${section}-citations`).html('<strong style="display: block; margin-bottom: 8px; color: #475569; font-size: 0.9rem;">Citations:</strong>' + citationsHtml);
     }
     
-    // Show success message
+    // Show success message with consistent styling
     const chatArea = $("#chat-box");
     const successMsg = $('<div></div>')
         .attr('data-sender', 'system')
-        .html(`<span style="color: #4caf50;">✓ ${section.charAt(0).toUpperCase() + section.slice(1)} approved and saved.</span>`)
+        .css({
+            'padding': '10px 15px',
+            'background': '#f0fdf4',
+            'border-left': '3px solid #22c55e',
+            'border-radius': '6px',
+            'margin': '10px 0',
+            'color': '#166534',
+            'font-size': '0.9rem'
+        })
+        .html(`${sectionName} approved and saved.`)
         .hide();
     chatArea.append(successMsg);
     successMsg.slideDown();
@@ -1031,10 +1019,26 @@ function handleSectionApproval(section, content, citations) {
 }
 
 function handleSectionDecline(section) {
+    const sectionNames = {
+        'background': 'Background Information',
+        'procedure': 'Procedure',
+        'research_design': 'Research Design'
+    };
+    const sectionName = sectionNames[section] || section;
+    
     const chatArea = $("#chat-box");
     const declineMsg = $('<div></div>')
         .attr('data-sender', 'system')
-        .html(`<span style="color: #f44336;">✗ ${section.charAt(0).toUpperCase() + section.slice(1)} declined.</span>`)
+        .css({
+            'padding': '10px 15px',
+            'background': '#fef2f2',
+            'border-left': '3px solid #ef4444',
+            'border-radius': '6px',
+            'margin': '10px 0',
+            'color': '#991b1b',
+            'font-size': '0.9rem'
+        })
+        .html(`${sectionName} declined.`)
         .hide();
     chatArea.append(declineMsg);
     declineMsg.slideDown();
@@ -1049,21 +1053,18 @@ function showSectionFeedbackModal(section, content, citations) {
     };
     const sectionName = sectionNames[section] || section;
     
+    // Consistent modal styling
     const modal = $(`
         <div class="section-feedback-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                <h2 style="margin-top: 0; margin-bottom: 20px; color: #333;">Provide Feedback for ${sectionName}</h2>
+            <div style="background: white; padding: 24px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                <h2 style="margin-top: 0; margin-bottom: 20px; color: #334155; font-size: 1.1rem; font-weight: 600;">Provide Feedback for ${sectionName}</h2>
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Your Feedback:</label>
-                    <textarea id="section-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit;" placeholder="Describe what should be changed or improved..."></textarea>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #475569; font-size: 0.9rem;">Your Feedback:</label>
+                    <textarea id="section-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; resize: vertical;" placeholder="Describe what should be changed or improved..."></textarea>
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="section-feedback-cancel" style="padding: 10px 20px; background: #e0e0e0; color: #333; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                        Cancel
-                    </button>
-                    <button class="section-feedback-submit" style="padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                        Submit Feedback
-                    </button>
+                    <button class="rq-action-btn secondary section-feedback-cancel">Cancel</button>
+                    <button class="rq-action-btn primary section-feedback-submit">Submit Feedback</button>
                 </div>
             </div>
         </div>
@@ -1114,10 +1115,26 @@ function submitSectionFeedback(section, content, feedback, citations) {
             // Show new section in chat
             displaySectionInChat(section, data.content, data.citations || []);
             
+            const sectionNames = {
+                'background': 'Background Information',
+                'procedure': 'Procedure',
+                'research_design': 'Research Design'
+            };
+            const sectionName = sectionNames[section] || section;
+            
             const chatArea = $("#chat-box");
             const feedbackMsg = $('<div></div>')
                 .attr('data-sender', 'system')
-                .html(`<span style="color: #2196f3;">💬 Feedback received. New ${section} generated.</span>`)
+                .css({
+                    'padding': '10px 15px',
+                    'background': '#eff6ff',
+                    'border-left': '3px solid #3b82f6',
+                    'border-radius': '6px',
+                    'margin': '10px 0',
+                    'color': '#1e40af',
+                    'font-size': '0.9rem'
+                })
+                .html(`Feedback received. New ${sectionName} generated.`)
                 .hide();
             chatArea.append(feedbackMsg);
             feedbackMsg.slideDown();

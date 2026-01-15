@@ -3146,3 +3146,116 @@ hr {
     background: #e2e8f0;
     border-color: #cbd5e1;
 }
+
+/* ============================================= */
+/* Section Cards (Background, Procedure, Design) */
+/* ============================================= */
+
+/* Section Card - main container */
+.section-card {
+    margin: 15px 0;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.section-card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.section-card-header h3 {
+    margin: 0;
+    flex: 1;
+    color: #334155;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Section Status Badge */
+.section-status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* Section Text content */
+.section-text {
+    font-size: 0.95rem;
+    color: #334155;
+    margin-bottom: 15px;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid #3b82f6;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+/* Section Citations */
+.section-citations-box {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #f1f5f9;
+    border-radius: 6px;
+}
+
+.section-citations-box strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+.section-citation-item {
+    margin: 5px 0;
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+/* Section Actions container */
+.section-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+/* ============================================= */
+/* Right Panel Scrollable Container              */
+/* ============================================= */
+
+#physics-ia-sections {
+    overflow-y: auto;
+    padding-right: 5px;
+    margin-top: 15px;
+    max-height: calc(100vh - 300px);
+}
+
+/* Custom scrollbar for physics-ia-sections */
+#physics-ia-sections::-webkit-scrollbar {
+    width: 4px;
+}
+
+#physics-ia-sections::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#physics-ia-sections::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 10px;
+}
+
+#physics-ia-sections::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+}
