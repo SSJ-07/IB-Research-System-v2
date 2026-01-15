@@ -2907,3 +2907,242 @@ hr {
     backface-visibility: hidden;
     perspective: 1000px;
 }
+
+/* ================================== */
+/* Research Question UI Components    */
+/* ================================== */
+
+/* RQ Card - main container */
+.rq-card {
+    margin: 15px 0;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.rq-card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.rq-card-header h3 {
+    margin: 0;
+    flex: 1;
+    color: #334155;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* RQ Status Badge */
+.rq-status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.rq-status-badge.valid {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.rq-status-badge.needs-review {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* RQ Text content */
+.rq-text {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #334155;
+    margin-bottom: 15px;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid #3b82f6;
+    line-height: 1.5;
+}
+
+/* RQ Warnings */
+.rq-warnings {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #fef2f2;
+    border-radius: 6px;
+    border-left: 3px solid #ef4444;
+}
+
+.rq-warnings-title {
+    color: #991b1b;
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.rq-warnings ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #b91c1c;
+    font-size: 0.9rem;
+}
+
+.rq-warnings li {
+    margin: 5px 0;
+}
+
+/* RQ Actions container */
+.rq-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+/* RQ Action buttons - base style */
+.rq-action-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 8px 16px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.rq-action-btn:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+/* Primary action (Approve) */
+.rq-action-btn.primary {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.rq-action-btn.primary:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+/* Secondary action (Edit, Feedback) */
+.rq-action-btn.secondary {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* Danger action (Decline) */
+.rq-action-btn.danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+}
+
+.rq-action-btn.danger:hover {
+    background: #fecaca;
+    border-color: #fca5a5;
+}
+
+/* RQ Display in right panel */
+.rq-display-panel {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.rq-display-panel h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #334155;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.rq-display-content {
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: #334155;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+/* Section generation buttons */
+.section-gen-btn {
+    display: inline-block;
+    padding: 8px 14px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.section-gen-btn:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}
+
+/* Expanded sections */
+.expanded-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.expanded-section h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #334155;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.expanded-section .toggle-icon {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.retrieve-citations-btn {
+    padding: 6px 12px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 10px;
+}
+
+.retrieve-citations-btn:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+}

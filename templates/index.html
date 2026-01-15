@@ -633,7 +633,7 @@
             <div id="main-content">
                 <div class="proposal-box" id="proposal-box" style="position: sticky; top: 0; z-index: 10; background: #f8fafc;">
                     <div class="welcome-message" id="welcome-message">
-                        Welcome to IB Research Assistant.
+                        Welcome to your IB Research Assistant.
                     </div>
                     <div class="proposal-content" id="proposal-content" style="display: none;">
                         <!-- Proposal text will go here -->
@@ -691,44 +691,44 @@
             <!-- Physics IA Specific Sections -->
             <div id="physics-ia-sections" style="display: none;">
                 <!-- IA Topic Display -->
-                <div id="ia-topic-display" style="display: none; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                    <h3 style="margin-top: 0;">IA Topic</h3>
-                    <div id="ia-topic-content"></div>
+                <div id="ia-topic-display" class="rq-display-panel" style="display: none;">
+                    <h3>IA Topic</h3>
+                    <div id="ia-topic-content" class="rq-display-content"></div>
                 </div>
                 
                 <!-- RQ Display -->
-                <div id="rq-display" style="display: none; margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
-                    <h3 style="margin-top: 0;">Research Question</h3>
-                    <div id="rq-content" style="font-weight: 600; font-size: 1.1em; margin-bottom: 10px;"></div>
-                    <div id="rq-warnings" style="color: #d32f2f; margin-bottom: 10px;"></div>
+                <div id="rq-display" class="rq-display-panel" style="display: none;">
+                    <h3>Research Question</h3>
+                    <div id="rq-content" class="rq-display-content"></div>
+                    <div id="rq-warnings" class="rq-warnings" style="display: none;"></div>
                     <div id="expand-buttons" style="display: none; margin-top: 15px;">
-                        <button class="btn btn-secondary expand-section-btn" data-section="background" style="margin-right: 10px; margin-bottom: 10px;">Generate Background Information</button>
-                        <button class="btn btn-secondary expand-section-btn" data-section="procedure" style="margin-right: 10px; margin-bottom: 10px;">Generate Procedure</button>
-                        <button class="btn btn-secondary expand-section-btn" data-section="research_design" style="margin-bottom: 10px;">Generate Research Design</button>
+                        <button class="section-gen-btn expand-section-btn" data-section="background">Generate Background Information</button>
+                        <button class="section-gen-btn expand-section-btn" data-section="procedure">Generate Procedure</button>
+                        <button class="section-gen-btn expand-section-btn" data-section="research_design">Generate Research Design</button>
                     </div>
                 </div>
                 
                 <!-- Expanded Sections -->
                 <div id="expanded-sections" style="margin-top: 20px;">
-                    <div id="background-section" class="expanded-section" style="display: none; margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 8px;">
-                        <h3 style="margin-top: 0; cursor: pointer;" onclick="toggleSection('background')">Background Information <span class="toggle-icon">▼</span></h3>
+                    <div id="background-section" class="expanded-section" style="display: none;">
+                        <h3 onclick="toggleSection('background')">Background Information <span class="toggle-icon">▼</span></h3>
                         <div id="background-content" class="section-content"></div>
                         <div id="background-citations" class="section-citations" style="margin-top: 10px;"></div>
-                        <button class="btn btn-sm btn-outline-primary retrieve-citations-btn" data-section="background" style="margin-top: 10px;">Retrieve More Citations</button>
+                        <button class="retrieve-citations-btn" data-section="background">Retrieve More Citations</button>
                     </div>
                     
-                    <div id="procedure-section" class="expanded-section" style="display: none; margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 8px;">
-                        <h3 style="margin-top: 0; cursor: pointer;" onclick="toggleSection('procedure')">Procedure <span class="toggle-icon">▼</span></h3>
+                    <div id="procedure-section" class="expanded-section" style="display: none;">
+                        <h3 onclick="toggleSection('procedure')">Procedure <span class="toggle-icon">▼</span></h3>
                         <div id="procedure-content" class="section-content"></div>
                         <div id="procedure-citations" class="section-citations" style="margin-top: 10px;"></div>
-                        <button class="btn btn-sm btn-outline-primary retrieve-citations-btn" data-section="procedure" style="margin-top: 10px;">Retrieve More Citations</button>
+                        <button class="retrieve-citations-btn" data-section="procedure">Retrieve More Citations</button>
                     </div>
                     
-                    <div id="research_design-section" class="expanded-section" style="display: none; margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 8px;">
-                        <h3 style="margin-top: 0; cursor: pointer;" onclick="toggleSection('research_design')">Research Design <span class="toggle-icon">▼</span></h3>
+                    <div id="research_design-section" class="expanded-section" style="display: none;">
+                        <h3 onclick="toggleSection('research_design')">Research Design <span class="toggle-icon">▼</span></h3>
                         <div id="research_design-content" class="section-content"></div>
                         <div id="research_design-citations" class="section-citations" style="margin-top: 10px;"></div>
-                        <button class="btn btn-sm btn-outline-primary retrieve-citations-btn" data-section="research_design" style="margin-top: 10px;">Retrieve More Citations</button>
+                        <button class="retrieve-citations-btn" data-section="research_design">Retrieve More Citations</button>
                     </div>
                 </div>
             </div>

@@ -515,60 +515,34 @@ function displayRQ(rq, warnings, is_valid) {
 function displayRQInChat(rq, warnings, is_valid) {
     const chatArea = $("#chat-box");
     
-    // Create RQ display card
+    // Create RQ display card with consistent app styling
     const rqCard = $(`
-        <div class="rq-card" style="margin: 15px 0; padding: 20px; background: ${is_valid ? '#e8f5e9' : '#fff3e0'}; border: 2px solid ${is_valid ? '#4caf50' : '#ff9800'}; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; flex: 1; color: #333;">Research Question</h3>
-                <span class="rq-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; ${is_valid ? 'background: #4caf50; color: white;' : 'background: #ff9800; color: white;'}">
-                    ${is_valid ? '✓ Valid' : '⚠ Needs Review'}
+        <div class="rq-card">
+            <div class="rq-card-header">
+                <h3>Research Question</h3>
+                <span class="rq-status-badge ${is_valid ? 'valid' : 'needs-review'}">
+                    ${is_valid ? 'Valid' : 'Needs Review'}
                 </span>
             </div>
-            <div class="rq-text" style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid ${is_valid ? '#4caf50' : '#ff9800'};">
+            <div class="rq-text">
                 ${rq}
             </div>
             ${warnings && warnings.length > 0 ? `
-                <div class="rq-warnings" style="margin-bottom: 15px; padding: 12px; background: #ffebee; border-radius: 6px; border-left: 4px solid #d32f2f;">
-                    <strong style="color: #d32f2f; display: block; margin-bottom: 8px;">⚠️ Validation Issues:</strong>
-                    <ul style="margin: 0; padding-left: 20px; color: #c62828;">
-                        ${warnings.map(w => `<li style="margin: 5px 0;">${w}</li>`).join('')}
+                <div class="rq-warnings">
+                    <span class="rq-warnings-title">Validation Issues:</span>
+                    <ul>
+                        ${warnings.map(w => `<li>${w}</li>`).join('')}
                     </ul>
                 </div>
             ` : ''}
-            <div class="rq-actions" style="display: flex; gap: 10px; margin-top: 15px;">
-                <button class="rq-edit-btn" style="flex: 1; padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                    ✏️ Edit
-                </button>
-                <button class="rq-approve-btn" style="flex: 1; padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                    ✓ Approve
-                </button>
-                <button class="rq-decline-btn" style="flex: 1; padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                    ✗ Decline
-                </button>
-                <button class="rq-feedback-btn" style="flex: 1; padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                    💬 Provide Feedback
-                </button>
+            <div class="rq-actions">
+                <button class="rq-action-btn secondary rq-edit-btn">Edit</button>
+                <button class="rq-action-btn primary rq-approve-btn">Approve</button>
+                <button class="rq-action-btn danger rq-decline-btn">Decline</button>
+                <button class="rq-action-btn secondary rq-feedback-btn">Feedback</button>
             </div>
         </div>
     `);
-    
-    // Add hover effects
-    rqCard.find('.rq-edit-btn').hover(
-        function() { $(this).css('background', '#f57c00'); },
-        function() { $(this).css('background', '#ff9800'); }
-    );
-    rqCard.find('.rq-approve-btn').hover(
-        function() { $(this).css('background', '#45a049'); },
-        function() { $(this).css('background', '#4caf50'); }
-    );
-    rqCard.find('.rq-decline-btn').hover(
-        function() { $(this).css('background', '#da190b'); },
-        function() { $(this).css('background', '#f44336'); }
-    );
-    rqCard.find('.rq-feedback-btn').hover(
-        function() { $(this).css('background', '#0b7dda'); },
-        function() { $(this).css('background', '#2196f3'); }
-    );
     
     // Add click handlers
     rqCard.find('.rq-edit-btn').on('click', function() {
@@ -663,20 +637,29 @@ function handleRQApproval(rq) {
     // Ensure physics-ia-sections container is visible
     $('#physics-ia-sections').show();
     
-    // Update the RQ in the sidebar
+    // Update the RQ in the sidebar with consistent styling
     $('#rq-content').text(rq);
     $('#rq-display').show();
-    $('#rq-content').css('color', '#2e7d32');
+    $('#rq-content').css('color', '#334155'); // Use app's standard text color
     $('#rq-warnings').empty().hide();
     
     // Show section generation buttons
     $('#expand-buttons').show();
     
-    // Show success message
+    // Show success message with consistent styling
     const chatArea = $("#chat-box");
     const successMsg = $('<div></div>')
         .attr('data-sender', 'system')
-        .html('<span style="color: #4caf50;">✓ Research Question approved and saved.</span>')
+        .css({
+            'padding': '10px 15px',
+            'background': '#f0fdf4',
+            'border-left': '3px solid #22c55e',
+            'border-radius': '6px',
+            'margin': '10px 0',
+            'color': '#166534',
+            'font-size': '0.9rem'
+        })
+        .html('Research Question approved and saved.')
         .hide();
     chatArea.append(successMsg);
     successMsg.slideDown();
@@ -698,11 +681,20 @@ function handleRQApproval(rq) {
 }
 
 function handleRQDecline(rq) {
-    // Show message
+    // Show message with consistent styling
     const chatArea = $("#chat-box");
     const declineMsg = $('<div></div>')
         .attr('data-sender', 'system')
-        .html('<span style="color: #f44336;">✗ Research Question declined. You can generate a new one.</span>')
+        .css({
+            'padding': '10px 15px',
+            'background': '#fef2f2',
+            'border-left': '3px solid #ef4444',
+            'border-radius': '6px',
+            'margin': '10px 0',
+            'color': '#991b1b',
+            'font-size': '0.9rem'
+        })
+        .html('Research Question declined. You can generate a new one.')
         .hide();
     chatArea.append(declineMsg);
     declineMsg.slideDown();
