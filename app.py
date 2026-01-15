@@ -2792,13 +2792,31 @@ def retrieve_citations_for_section(query: str):
                 if isinstance(citation, dict):
                     paper = citation.get("paper", {})
                     citation_id = citation.get("id", "")
+                    
+                    # Validate paper metadata to avoid N/A hallucinations
+                    author = paper.get("authors")
+                    year = paper.get("year")
+                    
+                    if not author or author == "N/A" or not year or year == "N/A":
+                        continue
+                        
+                    # Get paper URL (try openAccessPdf first, then regular url)
+                    paper_url = ""
+                    if paper.get("openAccessPdf") and paper["openAccessPdf"].get("url"):
+                        paper_url = paper["openAccessPdf"]["url"]
+                    elif paper.get("url"):
+                        paper_url = paper["url"]
+                    elif paper.get("corpus_id"):
+                        paper_url = f"https://www.semanticscholar.org/paper/{paper['corpus_id']}"
+                    
                     citations.append({
                         "id": citation_id,
-                        "author": paper.get("authors", "Unknown"),
-                        "year": paper.get("year", ""),
-                        "title": paper.get("title", ""),
+                        "author": author if isinstance(author, str) else "Unknown",
+                        "year": year,
+                        "title": paper.get("title", "Untitled"),
                         "corpus_id": paper.get("corpus_id", ""),
-                        "citation_count": paper.get("citation_count", 0)
+                        "citation_count": paper.get("citation_count", 0),
+                        "url": paper_url
                     })
         
         return citations[:10]  # Limit to 10 citations
@@ -2838,10 +2856,14 @@ def expand_background():
         citations_list = retrieve_citations_for_section(query)
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
+        # Get research brief content
+        research_brief = main_idea or (current_node.state.content if hasattr(current_node.state, 'content') else "")
+        
         # Include feedback in prompt if provided
         state_dict = {
             "ia_topic": ia_topic,
             "research_question": research_question,
+            "research_brief": research_brief,
             "citations": citations_str,
             "current_state": current_node.state,
             "subject": current_node.state.subject
@@ -2898,11 +2920,15 @@ def expand_procedure():
         citations_list = retrieve_citations_for_section(query)
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
+        # Get research brief content
+        research_brief = main_idea or (current_node.state.content if hasattr(current_node.state, 'content') else "")
+        
         # Generate section
         # Include feedback in prompt if provided
         state_dict = {
             "ia_topic": ia_topic,
             "research_question": research_question,
+            "research_brief": research_brief,
             "citations": citations_str,
             "current_state": current_node.state,
             "subject": current_node.state.subject
@@ -2958,11 +2984,15 @@ def expand_research_design():
         citations_list = retrieve_citations_for_section(query)
         citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
         
+        # Get research brief content
+        research_brief = main_idea or (current_node.state.content if hasattr(current_node.state, 'content') else "")
+        
         # Generate section
         # Include feedback in prompt if provided
         state_dict = {
             "ia_topic": ia_topic,
             "research_question": research_question,
+            "research_brief": research_brief,
             "citations": citations_str,
             "current_state": current_node.state,
             "subject": current_node.state.subject
@@ -3045,6 +3075,129 @@ def retrieve_citations():
     except Exception as e:
         logger.error(f"Error retrieving citations: {str(e)}")
         return jsonify({"error": f"Failed to retrieve citations: {str(e)}"}), 500
+
+
+@app.route("/api/section/improve_with_knowledge", methods=["POST"])
+def improve_section_with_knowledge():
+    """Improve a section (background, procedure, research_design) with retrieved knowledge."""
+    global current_node
+    
+    data = request.get_json()
+    if not data or "section" not in data:
+        return jsonify({"error": "Missing section in request"}), 400
+    
+    section = data["section"]
+    ia_topic = data.get("ia_topic", "")
+    research_question = data.get("research_question", "")
+    current_content = data.get("current_content", "")
+    additional_context = data.get("additional_context", "")
+    
+    if not ia_topic and current_node:
+        ia_topic = current_node.state.ia_topic if hasattr(current_node.state, 'ia_topic') else ""
+    if not research_question and current_node:
+        research_question = current_node.state.research_question if hasattr(current_node.state, 'research_question') else ""
+    
+    try:
+        # First retrieve relevant papers using ScholarQA
+        query = generate_citation_query(section, ia_topic, research_question)
+        # Add user's additional context to improve search
+        if additional_context:
+            query = f"{query} {additional_context}"
+        
+        # Use the full ScholarQA to get paper content, not just citations
+        result = scholar_qa.answer_query(query)
+        
+        # Format retrieved knowledge
+        retrieved_content = []
+        citations_list = []
+        
+        sections = result.get("sections", [])
+        for sec in sections:
+            section_text = f"## {sec.get('title', 'Untitled')}\n\n"
+            section_text += f"{sec.get('text', '')}\n\n"
+            retrieved_content.append(section_text)
+            
+            # Extract citations
+            for citation in sec.get("citations", []):
+                if isinstance(citation, dict):
+                    paper = citation.get("paper", {})
+                    citation_id = citation.get("id", "")
+                    
+                    # Validate paper metadata to avoid N/A hallucinations
+                    author = paper.get("authors")
+                    year = paper.get("year")
+                    
+                    if not author or author == "N/A" or not year or year == "N/A":
+                        continue
+                        
+                    # Get paper URL
+                    paper_url = ""
+                    if paper.get("openAccessPdf") and paper["openAccessPdf"].get("url"):
+                        paper_url = paper["openAccessPdf"]["url"]
+                    elif paper.get("url"):
+                        paper_url = paper["url"]
+                    elif paper.get("corpus_id"):
+                        paper_url = f"https://www.semanticscholar.org/paper/{paper['corpus_id']}"
+                    
+                    citations_list.append({
+                        "id": citation_id,
+                        "author": author if isinstance(author, str) else "Unknown",
+                        "year": year,
+                        "title": paper.get("title", "Untitled"),
+                        "corpus_id": paper.get("corpus_id", ""),
+                        "citation_count": paper.get("citation_count", 0),
+                        "url": paper_url
+                    })
+        
+        formatted_knowledge = "\n\n".join(retrieved_content)
+        citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list[:10]])
+        
+        # Get research brief content
+        research_brief = main_idea or (current_node.state.content if current_node and hasattr(current_node.state, 'content') else "")
+        
+        # Prepare state for section regeneration with knowledge
+        state_dict = {
+            "ia_topic": ia_topic,
+            "research_question": research_question,
+            "research_brief": research_brief,
+            "citations": citations_str,
+            "retrieved_knowledge": formatted_knowledge,
+            "previous_content": current_content,
+            "current_state": current_node.state if current_node else None,
+            "subject": current_node.state.subject if current_node else "physics"
+        }
+        
+        # Map section to action
+        action_map = {
+            "background": "expand_background",
+            "procedure": "expand_procedure",
+            "research_design": "expand_research_design"
+        }
+        
+        action = action_map.get(section, "expand_background")
+        
+        # Generate improved section with real citations
+        response = ideation_agent.execute_action(action, state_dict)
+        content = response.get("content", "")
+        
+        # Update state
+        if current_node and not current_node.state.expanded_sections:
+            current_node.state.expanded_sections = {}
+        if current_node:
+            current_node.state.expanded_sections[section] = content
+            current_node.state.section_citations[section] = citations_list[:10]
+        
+        return jsonify({
+            "content": content,
+            "citations": citations_list[:10],
+            "retrieved_knowledge": formatted_knowledge[:1000] + "..." if len(formatted_knowledge) > 1000 else formatted_knowledge
+        })
+    
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"Error improving section with knowledge: {str(e)}\n{error_trace}")
+        return jsonify({"error": f"Failed to improve section: {str(e)}"}), 500
+
 
 @app.route("/api/set_aspect_weights", methods=["POST"])
 def set_aspect_weights():

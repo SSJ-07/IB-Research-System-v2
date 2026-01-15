@@ -34,24 +34,41 @@ const retrieval = {
     // Store the current query and results
     currentQuery: null,
     currentResults: null,
+    targetSection: null, // New field to track if we're retrieving for a specific section
     
-    // Generate a query based on the current research idea
-    generateQuery: async function() {
-        const ideaText = $("#main-idea").text();
+    // Generate a query based on the current research idea or a specific section
+    generateQuery: async function(section) {
+        let ideaText = "";
+        let endpoint = "/api/generate_query";
+        let requestData = {};
+        
+        if (section) {
+            this.targetSection = section;
+            const iaTopic = $('#ia-topic-content').text();
+            const rq = $('#rq-content').text();
+            ideaText = `IA Topic: ${iaTopic}\nResearch Question: ${rq}\nSection: ${section}`;
+            // Use section-specific query generation if needed, otherwise use general
+            requestData = { idea: ideaText, section: section };
+        } else {
+            this.targetSection = null;
+            ideaText = $("#main-idea").text();
+            requestData = { idea: ideaText };
+        }
+        
         if (!ideaText) {
-            console.error("No research idea available for query generation");
+            console.error("No context available for query generation");
             return null;
         }
         
         try {
             // Show query generation in progress
-            this.showGeneratingQueryState();
+            this.showGeneratingQueryState(section);
             
             const response = await $.ajax({
-                url: "/api/generate_query",
+                url: endpoint,
                 type: "POST",
                 contentType: "application/json",
-                data: JSON.stringify({ idea: ideaText })
+                data: JSON.stringify(requestData)
             });
             
             if (response && response.query) {
@@ -154,13 +171,14 @@ const retrieval = {
     },
     
     // Show generating query state in the center chat area
-    showGeneratingQueryState: function() {
+    showGeneratingQueryState: function(section) {
+        const text = section ? `Generating search query for ${section.replace('_', ' ')}...` : "Generating search query based on research idea...";
         // Add message to chat box
         $("#chat-box").append(`
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">Generating search query based on research idea...</div>
+                    <div class="loading-text">${text}</div>
                 </div>
             </div>
         `);
@@ -396,10 +414,15 @@ const retrieval = {
         // Remove loading message if exists
         $("#chat-box .message-container:last-child .loading-state").remove();
         
+        const isSection = this.targetSection !== null;
+        const targetName = isSection ? this.targetSection.replace('_', ' ') : "Research Idea";
+        const btnText = isSection ? `Improve ${targetName} with Knowledge` : "Improve Idea with Retrieved Knowledge";
+        const btnClass = isSection ? "improve-section-with-knowledge-btn" : "improve-with-knowledge-btn";
+        
         // Create a summary of the results
         let summaryContent = `<div class="retrieval-results">
             <h3>Knowledge Retrieved</h3>
-            <p>Retrieved information about <strong>${results.query}</strong></p>
+            <p>Retrieved information for <strong>${targetName}</strong> using query: <em>"${results.query}"</em></p>
             <ul class="retrieval-sections">`;
             
         results.sections.forEach(section => {
@@ -409,7 +432,7 @@ const retrieval = {
         summaryContent += `</ul>
             <p>The complete results are available in the left panel.</p>
             <div class="improve-button-container">
-                <button class="improve-with-knowledge-btn">Improve Idea with Retrieved Knowledge</button>
+                <button class="${btnClass}" data-section="${this.targetSection}">${btnText}</button>
             </div>
         </div>`;
         
@@ -424,8 +447,58 @@ const retrieval = {
         $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
         
         // Add handler for improve button
-        $(".improve-with-knowledge-btn").click(() => {
-            this.improveIdeaWithKnowledge();
+        if (isSection) {
+            $(`.improve-section-with-knowledge-btn[data-section="${this.targetSection}"]`).click((e) => {
+                const section = $(e.target).data('section');
+                this.improveSectionWithKnowledge(section);
+            });
+        } else {
+            $(".improve-with-knowledge-btn").click(() => {
+                this.improveIdeaWithKnowledge();
+            });
+        }
+    },
+    
+    // Function to improve a specific IA section with retrieved knowledge
+    improveSectionWithKnowledge: function(section) {
+        const iaTopic = $('#ia-topic-content').text();
+        const rq = $('#rq-content').text();
+        const currentContent = $(`#${section}-content`).html() || '';
+        
+        // Add loading message
+        $("#chat-box").append(`
+            <div class="message-container" data-sender="system">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Improving ${section.replace('_', ' ')} with retrieved knowledge...</div>
+                </div>
+            </div>
+        `);
+        $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
+        
+        $.ajax({
+            url: '/api/section/improve_with_knowledge',
+            method: 'POST',
+            contentType: 'application/json',
+            timeout: 120000,
+            data: JSON.stringify({
+                section: section,
+                ia_topic: iaTopic,
+                research_question: rq,
+                current_content: currentContent
+            }),
+            success: function(data) {
+                $("#chat-box .message-container:last-child .loading-state").parent().remove();
+                if (data.content && typeof displaySectionInChat === 'function') {
+                    displaySectionInChat(section, data.content, data.citations || []);
+                    displayExpandedSection(section, data.content, data.citations || []);
+                }
+            },
+            error: function(xhr) {
+                $("#chat-box .message-container:last-child .loading-state").parent().remove();
+                console.error(`Error improving ${section}:`, xhr);
+                alert(`Error improving ${section}. Please try again.`);
+            }
         });
     },
     

@@ -825,6 +825,9 @@ IA TOPIC:
 RESEARCH QUESTION:
 {research_question}
 
+RESEARCH BRIEF (use this as context):
+{research_brief}
+
 RETRIEVED CITATIONS (optional):
 {citations}
 
@@ -833,13 +836,13 @@ Your task is to write a Background Information section (2-3 paragraphs) that inc
 2. Personal interest or motivation for choosing this topic
 3. Significance of the investigation
 
-CITATION FORMAT:
-- Use inline citations in the format: [ID | AUTHOR_REF | YEAR | Citations: CITES]
-- Citations should follow the text they support
-- You can cite multiple sources in a single sentence if appropriate
-- If citations are provided, use them where relevant. If not provided, you may cite as [LLM MEMORY | 2024] for general knowledge
+Use the Research Brief above as context to inform your writing. The Background Information should be consistent with and build upon the ideas in the Research Brief.
 
-Write the Background Information section using markdown formatting. Include citations inline where appropriate. The section should be 2-3 paragraphs and provide context for why this investigation is interesting and scientifically relevant.
+IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
+
+If real citations ARE provided above, you may cite them inline using the exact format shown in the RETRIEVED CITATIONS section. Do not modify or invent citation information.
+
+Write the Background Information section using markdown formatting. The section should be 2-3 paragraphs and provide context for why this investigation is interesting and scientifically relevant.
 """
 
 IB_PROCEDURE_PROMPT_PHYSICS = """You are writing the Procedure section for an IBDP Physics Internal Assessment.
@@ -850,6 +853,9 @@ IA TOPIC:
 RESEARCH QUESTION:
 {research_question}
 
+RESEARCH BRIEF (use this as context):
+{research_brief}
+
 RETRIEVED CITATIONS (optional):
 {citations}
 
@@ -859,12 +865,13 @@ Your task is to write a detailed Procedure section in IB style that includes:
 3. Safety considerations
 4. Equipment setup and configuration
 
-CITATION FORMAT:
-- Use inline citations in the format: [ID | AUTHOR_REF | YEAR | Citations: CITES] where citing established methods or techniques
-- Citations should follow the text they support
-- If citations are provided, use them where relevant. If not provided, you may cite as [LLM MEMORY | 2024] for standard experimental methods
+Use the Research Brief above as context to inform your writing. The Procedure should be consistent with the methodology described in the Research Brief.
 
-Write the Procedure section using markdown formatting with clear numbered steps. Include citations where appropriate for established methods or techniques. The procedure should be detailed enough for another student to replicate the experiment.
+IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
+
+If real citations ARE provided above, you may cite them inline using the exact format shown in the RETRIEVED CITATIONS section. Do not modify or invent citation information.
+
+Write the Procedure section using markdown formatting with clear numbered steps. The procedure should be detailed enough for another student to replicate the experiment.
 """
 
 IB_RESEARCH_DESIGN_PROMPT_PHYSICS = """You are writing the Research Design section for an IBDP Physics Internal Assessment.
@@ -874,6 +881,9 @@ IA TOPIC:
 
 RESEARCH QUESTION:
 {research_question}
+
+RESEARCH BRIEF (use this as context):
+{research_brief}
 
 RETRIEVED CITATIONS (optional):
 {citations}
@@ -888,12 +898,13 @@ Your task is to write a Research Design section that includes:
      * How it's controlled (method)
      * Why it's controlled (reason)
 
-CITATION FORMAT:
-- Use inline citations in the format: [ID | AUTHOR_REF | YEAR | Citations: CITES] where citing equipment specifications or established measurement techniques
-- Citations should follow the text they support
-- If citations are provided, use them where relevant. If not provided, you may cite as [LLM MEMORY | 2024] for standard equipment or methods
+Use the Research Brief above as context to inform your writing. The Research Design should be consistent with the methodology and variables described in the Research Brief.
 
-Write the Research Design section using markdown formatting. Include a clear materials list and a detailed variables table. Include citations where appropriate for equipment specifications or measurement techniques.
+IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
+
+If real citations ARE provided above, you may cite them inline using the exact format shown in the RETRIEVED CITATIONS section. Do not modify or invent citation information.
+
+Write the Research Design section using markdown formatting. Include a clear materials list and a detailed variables table.
 """
 
 

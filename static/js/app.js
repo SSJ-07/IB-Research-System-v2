@@ -954,11 +954,11 @@ function showRQFeedbackModal(rq, warnings) {
                     <label style="display: block; margin-bottom: 8px; font-weight: 600;">Your Feedback:</label>
                     <textarea id="rq-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit;" placeholder="Describe what should be changed or improved..."></textarea>
                 </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="rq-feedback-cancel" style="padding: 10px 20px; background: #e0e0e0; color: #333; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                <div class="ia-section-actions" style="justify-content: flex-end;">
+                    <button class="ia-section-action-btn secondary rq-feedback-cancel">
                         Cancel
                     </button>
-                    <button class="rq-feedback-submit" style="padding: 10px 20px; background: #2196f3; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                    <button class="ia-section-action-btn primary rq-feedback-submit">
                         Submit Feedback
                     </button>
                 </div>
@@ -1079,6 +1079,23 @@ function displaySectionInChat(section, content, citations) {
     };
     const sectionName = sectionNames[section] || section;
     
+    // Filter out N/A or empty citations just in case
+    const validCitations = (citations || []).filter(c => 
+        c.author && c.author !== 'N/A' && c.author !== 'Unknown' && 
+        c.year && c.year !== 'N/A'
+    );
+    
+    // Check if content already contains hallucinated template citations and remove them
+    let cleanContent = content;
+    if (typeof cleanContent === 'string') {
+        // Remove N/A placeholder citations
+        cleanContent = cleanContent.replace(/\[ID: N\/A \| AUTHOR_REF: N\/A \| YEAR: N\/A \| Citations: N\/A\]/g, '');
+        cleanContent = cleanContent.replace(/\[ID: .*? \| AUTHOR_REF: N\/A \| YEAR: N\/A \| Citations: .*?\]/g, '');
+        // Remove template format citations (when LLM outputs the template literally)
+        cleanContent = cleanContent.replace(/\[ID \| AUTHOR_REF \| YEAR \| Citations: CITES\]/g, '');
+        cleanContent = cleanContent.replace(/\[ID \| AUTHOR_REF \| YEAR \| Citations: CITES\]\./g, '');
+    }
+    
     // Create section display card with consistent app styling
     const sectionCard = $(`
         <div class="section-card" data-section="${section}">
@@ -1087,14 +1104,21 @@ function displaySectionInChat(section, content, citations) {
                 <span class="section-status-badge">Draft</span>
             </div>
             <div class="section-text">
-                ${formatMessage(content)}
+                ${formatMessage(cleanContent)}
             </div>
-            ${citations && citations.length > 0 ? `
+            ${validCitations.length > 0 ? `
                 <div class="section-citations-box">
-                    <strong>Citations:</strong>
-                    ${citations.map(c => {
-                        const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
-                        return `<div class="section-citation-item">${citationStr}</div>`;
+                    <strong>Sources (${validCitations.length}):</strong>
+                    ${validCitations.map(c => {
+                        const title = c.title || 'Untitled';
+                        const author = c.author || 'Unknown';
+                        const year = c.year || 'n.d.';
+                        const url = c.url || '';
+                        const linkHtml = url ? `<a href="${url}" target="_blank" class="citation-link">View Paper</a>` : '';
+                        return `<div class="section-citation-item">
+                            <div class="citation-title">${title} ${linkHtml}</div>
+                            <div class="citation-meta">${author} (${year})</div>
+                        </div>`;
                     }).join('')}
                 </div>
             ` : ''}
@@ -1293,9 +1317,9 @@ function showSectionFeedbackModal(section, content, citations) {
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #475569; font-size: 0.9rem;">Your Feedback:</label>
                     <textarea id="section-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; resize: vertical;" placeholder="Describe what should be changed or improved..."></textarea>
                 </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="rq-action-btn secondary section-feedback-cancel">Cancel</button>
-                    <button class="rq-action-btn primary section-feedback-submit">Submit Feedback</button>
+                <div class="ia-section-actions" style="justify-content: flex-end;">
+                    <button class="ia-section-action-btn secondary section-feedback-cancel">Cancel</button>
+                    <button class="ia-section-action-btn primary section-feedback-submit">Submit Feedback</button>
                 </div>
             </div>
         </div>
@@ -1379,16 +1403,49 @@ function submitSectionFeedback(section, content, feedback, citations) {
 }
 
 function displayExpandedSection(section, content, citations) {
-    $(`#${section}-section`).show();
-    $(`#${section}-content`).html(formatMessage(content));
+    const contentElement = $(`#${section}-content`);
+    const citationsElement = $(`#${section}-citations`);
+    
+    // Check if content already contains hallucinated template citations and remove them
+    let cleanContent = content;
+    if (typeof cleanContent === 'string') {
+        // Remove N/A placeholder citations
+        cleanContent = cleanContent.replace(/\[ID: N\/A \| AUTHOR_REF: N\/A \| YEAR: N\/A \| Citations: N\/A\]/g, '');
+        cleanContent = cleanContent.replace(/\[ID: .*? \| AUTHOR_REF: N\/A \| YEAR: N\/A \| Citations: .*?\]/g, '');
+        // Remove template format citations (when LLM outputs the template literally)
+        cleanContent = cleanContent.replace(/\[ID \| AUTHOR_REF \| YEAR \| Citations: CITES\]/g, '');
+        cleanContent = cleanContent.replace(/\[ID \| AUTHOR_REF \| YEAR \| Citations: CITES\]\./g, '');
+    }
+    
+    if (contentElement.length) {
+        $(`#${section}-section`).show();
+        contentElement.html(formatMessage(cleanContent)).show();
+    }
     
     // Display citations
-    if (citations.length > 0) {
-        const citationsHtml = citations.map(c => {
-            const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
-            return `<div style="margin: 5px 0; padding: 5px; background: #f0f0f0; border-radius: 4px;">${citationStr}</div>`;
-        }).join('');
-        $(`#${section}-citations`).html('<strong>Citations:</strong>' + citationsHtml);
+    if (citationsElement.length) {
+        // Filter out N/A or empty citations
+        const validCitations = (citations || []).filter(c => 
+            c.author && c.author !== 'N/A' && c.author !== 'Unknown' && 
+            c.year && c.year !== 'N/A'
+        );
+        
+        if (validCitations.length > 0) {
+            const citationsHtml = validCitations.map(c => {
+                const title = c.title || 'Untitled';
+                const author = c.author || 'Unknown';
+                const year = c.year || 'n.d.';
+                const url = c.url || '';
+                const linkHtml = url ? `<a href="${url}" target="_blank" class="citation-link">View Paper</a>` : '';
+                return `<div class="section-citation-item">
+                    <div class="citation-title">${title} ${linkHtml}</div>
+                    <div class="citation-meta">${author} (${year})</div>
+                </div>`;
+            }).join('');
+            citationsElement.addClass('section-citations-box').html(`<strong>Sources (${validCitations.length}):</strong>` + citationsHtml).show();
+        } else {
+            citationsElement.hide();
+        }
     }
 }
 
@@ -1422,16 +1479,152 @@ function retrieveCitations(section) {
             // Append new citations
             const existingCitations = $(`#${section}-citations`).data('citations') || [];
             const allCitations = [...existingCitations, ...(data.citations || [])];
-            $(`#${section}-citations`).data('citations', allCitations);
             
-            const citationsHtml = allCitations.map(c => {
-                const citationStr = `[${c.id || c.corpus_id} | ${c.author} | ${c.year} | Citations: ${c.citation_count || 0}]`;
-                return `<div style="margin: 5px 0; padding: 5px; background: #f0f0f0; border-radius: 4px;">${citationStr}</div>`;
+            // Filter out N/A or empty citations
+            const validCitations = allCitations.filter(c => 
+                c.author && c.author !== 'N/A' && c.author !== 'Unknown' && 
+                c.year && c.year !== 'N/A'
+            );
+            
+            $(`#${section}-citations`).data('citations', validCitations);
+            
+            const citationsHtml = validCitations.map(c => {
+                const title = c.title || 'Untitled';
+                const author = c.author || 'Unknown';
+                const year = c.year || 'n.d.';
+                const url = c.url || '';
+                const linkHtml = url ? `<a href="${url}" target="_blank" class="citation-link">View Paper</a>` : '';
+                return `<div class="section-citation-item">
+                    <div class="citation-title">${title} ${linkHtml}</div>
+                    <div class="citation-meta">${author} (${year})</div>
+                </div>`;
             }).join('');
-            $(`#${section}-citations`).html('<strong>Citations:</strong>' + citationsHtml);
+            
+            if (validCitations.length > 0) {
+                $(`#${section}-citations`).addClass('section-citations-box').html(`<strong>Sources (${validCitations.length}):</strong>` + citationsHtml).show();
+            } else {
+                $(`#${section}-citations`).hide();
+            }
         },
         error: function(xhr) {
             console.error(`Error retrieving citations for ${section}:`, xhr);
+            alert(`Error retrieving citations for ${section}. Please try again.`);
+        }
+    });
+}
+
+// Edit an approved section in the right panel
+function editApprovedSection(section) {
+    const contentDiv = $(`#${section}-content`);
+    const currentHtml = contentDiv.html();
+    const currentText = contentDiv.text();
+    
+    // Create textarea for editing
+    const textarea = $(`<textarea class="ia-section-edit-textarea" style="width: 100%; min-height: 200px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; resize: vertical; box-sizing: border-box;">${currentText}</textarea>`);
+    
+    // Create action buttons
+    const actionsDiv = $(`<div class="ia-section-edit-actions" style="display: flex; gap: 8px; margin-top: 10px;">
+        <button class="ia-section-action-btn primary save-section-btn">Save</button>
+        <button class="ia-section-action-btn secondary cancel-section-btn">Cancel</button>
+    </div>`);
+    
+    // Replace content with textarea
+    contentDiv.html('').append(textarea);
+    $(`#${section}-actions`).hide();
+    contentDiv.after(actionsDiv);
+    
+    // Save handler
+    actionsDiv.find('.save-section-btn').on('click', function() {
+        const newContent = textarea.val();
+        contentDiv.html(formatMessage(newContent));
+        actionsDiv.remove();
+        $(`#${section}-actions`).show();
+        
+        // Update backend state
+        $.ajax({
+            url: `/api/update_section/${section}`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ content: newContent })
+        });
+    });
+    
+    // Cancel handler
+    actionsDiv.find('.cancel-section-btn').on('click', function() {
+        contentDiv.html(currentHtml);
+        actionsDiv.remove();
+        $(`#${section}-actions`).show();
+    });
+}
+
+// Provide feedback for a section in the right panel
+function provideSectionFeedback(section) {
+    const sectionNames = {
+        'background': 'Background Information',
+        'procedure': 'Procedure',
+        'research_design': 'Research Design'
+    };
+    const sectionName = sectionNames[section] || section;
+    
+    // Remove any existing modal
+    $('#section-feedback-modal').remove();
+    
+    const modal = $(`
+        <div id="section-feedback-modal" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+            <div class="modal-content" style="background: white; padding: 24px; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 1.1rem;">Feedback for ${sectionName}</h3>
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">What would you like to improve?</p>
+                <textarea id="section-feedback-input" placeholder="e.g., 'Add more detail about safety precautions' or 'Include uncertainty calculations'" 
+                    style="width: 100%; height: 100px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; resize: vertical; box-sizing: border-box;"></textarea>
+                <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end;">
+                    <button class="ia-section-action-btn secondary" onclick="$('#section-feedback-modal').remove();">Cancel</button>
+                    <button class="ia-section-action-btn primary" onclick="submitSectionFeedbackFromPanel('${section}');">Submit Feedback</button>
+                </div>
+            </div>
+        </div>
+    `);
+    
+    $('body').append(modal);
+    $('#section-feedback-input').focus();
+}
+
+// Submit feedback for a section from the right panel
+function submitSectionFeedbackFromPanel(section) {
+    const feedback = $('#section-feedback-input').val();
+    $('#section-feedback-modal').remove();
+    
+    if (!feedback.trim()) {
+        alert('Please enter feedback.');
+        return;
+    }
+    
+    const iaTopic = $('#ia-topic-content').text();
+    const rq = $('#rq-content').text();
+    const previousContent = $(`#${section}-content`).html();
+    
+    // Show loading
+    $(`#${section}-content`).html('<div class="loading-state"><div class="spinner"></div><span>Regenerating...</span></div>');
+    
+    $.ajax({
+        url: `/api/expand/${section}`,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            ia_topic: iaTopic,
+            research_question: rq,
+            feedback: feedback,
+            previous_content: previousContent
+        }),
+        success: function(data) {
+            if (data.content) {
+                $(`#${section}-content`).html(formatMessage(data.content));
+                displayExpandedSection(section, data.content, data.citations || []);
+            }
+        },
+        error: function(xhr) {
+            console.error(`Error regenerating ${section}:`, xhr);
+            $(`#${section}-content`).html(previousContent);
+            alert(`Error regenerating ${section}. Please try again.`);
         }
     });
 }
