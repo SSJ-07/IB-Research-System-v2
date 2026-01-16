@@ -756,10 +756,20 @@ function loadSubject() {
                 selectedSubject = data.subject;
                 $('#subject-select').val(data.subject);
                 updateSubjectUI(data.subject);
+            } else {
+                // Default to physics if no subject is saved
+                selectedSubject = 'physics';
+                $('#subject-select').val('physics');
+                updateSubjectUI('physics');
+                saveSubject('physics');
             }
         })
         .fail(function() {
-            console.error('Failed to load subject');
+            // Default to physics on error
+            selectedSubject = 'physics';
+            $('#subject-select').val('physics');
+            updateSubjectUI('physics');
+            saveSubject('physics');
         });
 }
 
