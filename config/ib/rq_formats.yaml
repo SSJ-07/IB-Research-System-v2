@@ -15,3 +15,22 @@ physics_ia:
     - must_have_units: true
     - must_have_scope: true
 
+chemistry_ia:
+  required_elements:
+    - independent_variable
+    - dependent_variable
+    - measurable_quantities
+    - scope_or_range
+  templates:
+    - pattern: "How does {IV} affect {DV} for {range_or_conditions}?"
+      example: "How does the concentration of hydrochloric acid (0.1M to 1.0M) affect the rate of reaction with magnesium ribbon?"
+    - pattern: "How does {IV} affect {DV} at {levels}, and how does this compare between {groupA} and {groupB} under {controls}?"
+      example: "How does temperature (20°C to 60°C) affect the rate of vitamin C degradation in orange juice compared to apple juice?"
+    - pattern: "What is the relationship between {IV} and {DV} for {chemical_system}?"
+      example: "What is the relationship between pH (2 to 12) and the rate of enzyme activity for catalase in potato extract?"
+  validation_rules:
+    - must_contain_iv: true
+    - must_contain_dv: true
+    - must_have_units: true
+    - must_have_scope: true
+

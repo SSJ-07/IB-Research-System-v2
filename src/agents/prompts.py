@@ -1160,49 +1160,249 @@ Always provide your reviews in the exact JSON format requested, with scores and 
 Pay special attention to chemical safety, reaction mechanisms, analytical techniques, and proper waste disposal procedures.
 """
 
-UNIFIED_REVIEW_PROMPT_CHEMISTRY = """Evaluate the following chemistry research idea across exactly five specific aspects:
+UNIFIED_REVIEW_PROMPT_CHEMISTRY = """Evaluate the following chemistry research idea across exactly five specific aspects aligned with IBDP Chemistry IA criteria:
 {research_idea}
 
-Provide a detailed review for each of these five aspects:
-1. Novelty: Originality and innovation compared to existing work
-2. Clarity: How well-defined and understandable the idea is
-3. Feasibility: Technical practicality within current capabilities and school laboratory constraints
-4. Effectiveness: How well the proposed experimental approach might answer the stated research question
-5. Impact: Potential scientific and practical significance if successful
+Provide a detailed review for each of these five aspects (mapped to IA criteria):
+1. RQ & Design Fit (including Novelty): How well the research question aligns with the experimental design and maps to the Research Design criterion. Does the RQ have clear IV, DV, and scope? Is the design appropriate to answer the RQ? CRITICALLY ASSESS NOVELTY: How original and innovative is this research question and experimental design approach compared to standard IA topics? Does it explore a unique angle, use creative methodology, or investigate an understudied relationship? Avoid generic or overdone topics unless the investigation introduces a clearly refined scope, improved methodology, or deeper analysis beyond standard treatments.
+
+2. Data/Analysis Viability: Quality of data collection plan and analysis methods, mapping to the Data Analysis criterion. STRICT REQUIREMENTS: Are measurements appropriate with sufficient precision for the research question? Does the analysis plan include proper statistical methods (e.g., error propagation, regression analysis, chi-square tests where applicable)? Are uncertainty calculations explicitly planned? Will the data quality be sufficient to draw meaningful conclusions? Are appropriate analytical techniques selected (titration, spectroscopy, chromatography, etc.)? The analysis must be rigorous and appropriate for the level of investigation.
+
+3. Conclusion Traceability (including Impact): Can the experimental design produce evidence sufficient for a meaningful conclusion? Will the data allow for clear conclusions? CRITICALLY ASSESS IMPACT: What is the potential scientific and practical significance of this research? How does this contribute to understanding fundamental chemistry principles? Does it have real-world applications or implications (environmental, industrial, medicinal)? Will the findings be meaningful beyond just completing the IA? Impact must be substantial and clearly articulated.
+
+4. Evaluation Potential:
+Can meaningful limitations and improvements be identified?
+Does the design naturally allow for discussion of uncertainties, systematic errors, and methodological limitations?
+Are proposed improvements realistic and specific (not generic)?
+Does the evaluation demonstrate critical understanding of the investigation rather than surface-level reflection?
+
+5. Safety & Practicality (Feasibility - STRICT): Feasibility for school chemistry laboratory setting, safety considerations, and practical constraints. STRICT REQUIREMENTS FOR HIGH SCORES: 
+- Equipment: Must use only equipment readily available in standard school chemistry labs (no specialized or expensive equipment)
+- Time: Must be completable within typical IA timeframe (approximately 10-15 hours of lab work, excluding write-up)
+- Budget: Materials and chemicals must be affordable and commonly available (no expensive reagents, specialized compounds, or rare materials)
+- Technical Skills: Must be appropriate for student level - no advanced techniques requiring extensive training or expertise
+- Resources: Must rely on common chemicals and standard lab equipment only
+- Safety: Must have appropriate safety protocols (proper PPE, fume hood use where necessary, safe handling of hazardous chemicals)
+- Waste Disposal: Must have clear and feasible waste disposal procedures
+- Practicality: Setup and execution must be straightforward without requiring complex apparatus construction or specialized knowledge
+Is it safe, achievable, and realistic for a school chemistry laboratory IA? Ideas that require specialized equipment, excessive time, high costs, or advanced skills should receive low scores.
 
 Additionally, consider these chemistry-specific aspects (provide as extra_scores):
-- Chemical Safety: Comprehensive safety protocols, proper handling procedures, and risk assessment
-- Analytical Validity: Appropriateness and rigor of analytical methods (titration, spectroscopy, chromatography, etc.)
+- Analytical Rigor: Quality of analytical methods, precision of measurements, and appropriateness of techniques (titration, spectroscopy, chromatography, etc.)
+- Chemical Safety: Appropriate safety considerations, hazard assessment, PPE requirements, and waste disposal protocols
 
 For each core aspect, provide:
 - A score from 1-10 (where 10 is best)
 - A brief, specific review of the idea's strengths and weaknesses for this aspect
 
-Return your review in a JSON format with the following structure:
+IMPORTANT: You MUST return your review in valid JSON format with the following exact structure:
 {{
   "reviews": {{
-    "novelty": "Your detailed assessment of novelty",
-    "clarity": "Your detailed assessment of clarity",
-    "feasibility": "Your detailed assessment of feasibility",
-    "effectiveness": "Your detailed assessment of effectiveness",
-    "impact": "Your detailed assessment of impact"
+    "rq_design_fit": "Your detailed assessment of RQ & Design Fit",
+    "data_analysis_viability": "Your detailed assessment of Data/Analysis Viability",
+    "conclusion_traceability": "Your detailed assessment of Conclusion Traceability",
+    "evaluation_potential": "Your detailed assessment of Evaluation Potential",
+    "safety_practicality": "Your detailed assessment of Safety & Practicality"
   }},
   "scores": {{
-    "novelty": <score>,
-    "clarity": <score>,
-    "feasibility": <score>,
-    "effectiveness": <score>,
-    "impact": <score>
+    "rq_design_fit": <number>,
+    "data_analysis_viability": <number>,
+    "conclusion_traceability": <number>,
+    "evaluation_potential": <number>,
+    "safety_practicality": <number>
   }},
   "extra_scores": {{
-    "chemical_safety": <score>,
-    "analytical_validity": <score>
+    "analytical_rigor": <number>,
+    "chemical_safety": <number>
   }}
 }}
 
-Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea, with special attention to chemical safety, reaction mechanisms, analytical techniques, and waste disposal procedures.
+Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea, with special attention to analytical methods, chemical safety, reaction mechanisms, and waste disposal procedures aligned with IBDP Chemistry IA assessment criteria.
 Ensure all scores are integers or decimals between 1 and 10, and that you include reviews for all five core aspects.
 """
+
+# ============================================================================
+# Chemistry IA-Specific Prompts (for IBDP Chemistry Internal Assessment)
+# ============================================================================
+
+IDEATION_IA_TOPIC_PROMPT_CHEMISTRY = """Act as an experienced chemistry researcher specializing in IBDP Chemistry Internal Assessments. Your task is to generate an overall IA topic that falls within the IBDP Chemistry syllabus.
+
+CHEMISTRY SYLLABUS TOPICS (Full Syllabus):
+{selected_topics}
+
+RESEARCH GOAL (optional):
+{research_goal}
+
+Your task is to generate **one** coherent and feasible Chemistry IA topic that:
+1. Falls within the scope of the IBDP Chemistry syllabus topics listed above
+2. Is appropriate for high school level experimental chemistry
+3. Can be conducted in a school chemistry laboratory setting
+4. Has clear experimental methodology with appropriate analytical techniques
+5. Is novel and interesting
+6. Aligns with at least one or more topics from the syllabus
+7. Includes proper safety considerations and waste disposal
+
+The topic should be described as a comprehensive research brief that includes:
+- A clear description of the overall investigation area
+- How the investigation relates to the syllabus topics
+- The general experimental approach and analytical methods
+- Why this topic is interesting and feasible for an IA
+
+Return your response as a structured text (not JSON) that reads like a research brief. Include:
+1. A clear title for the investigation
+2. Brief background on the chemistry concepts involved
+3. The proposed experimental approach
+4. Key variables and measurements
+5. Safety considerations and waste disposal
+
+Do not include any JSON formatting - write this as a cohesive, well-structured research brief.
+"""
+
+IDEATION_RQ_PROMPT_CHEMISTRY = """Act as an experienced chemistry researcher specializing in IBDP Chemistry Internal Assessments. Your task is to generate TWO hyper-specific research questions (RQs) in proper IB format from the given IA topic.
+
+IA TOPIC:
+{ia_topic}
+
+CHEMISTRY SYLLABUS TOPICS (Full Syllabus - RQ must fall within these topics):
+{topics}
+
+RQ FORMAT REQUIREMENTS:
+- Must clearly identify an independent variable (IV) with units
+- Must clearly identify a dependent variable (DV) with units
+- Must specify measurable quantities
+- Must include scope or range of investigation
+- Should follow the pattern: "How does [IV] affect [DV] for [range_or_conditions]?"
+
+RQ TEMPLATES:
+- "How does [IV] affect [DV] for [range_or_conditions]?"
+  Example: "How does the concentration of hydrochloric acid (0.1M to 1.0M) affect the rate of reaction with magnesium ribbon?"
+- "How does [IV] affect [DV] at [levels], and how does this compare between [groupA] and [groupB] under [controls]?"
+  Example: "How does temperature (20°C to 60°C) affect the rate of vitamin C degradation in orange juice compared to apple juice?"
+
+Your task:
+1. Generate TWO distinct hyper-specific RQs that follow IB format requirements
+2. Ensure each RQ aligns with the Chemistry syllabus topics listed above
+3. Ensure each RQ includes IV, DV, units, and scope
+4. Make each RQ specific enough to guide a focused experimental investigation
+5. Ensure each RQ is measurable and feasible for school chemistry laboratory
+
+If any generated RQ does not meet all requirements, rewrite it to include:
+- Explicit independent variable with units
+- Explicit dependent variable with units
+- Clear scope/range of investigation
+- Measurable quantities
+
+Return EXACTLY TWO lines, each with one RQ, using the following format:
+1. <RQ sentence>
+2. <RQ sentence>
+
+Do not include any additional text or explanation.
+"""
+
+IB_BACKGROUND_PROMPT_CHEMISTRY = """You are writing the Background Information section for an IBDP Chemistry Internal Assessment.
+
+IA TOPIC:
+{ia_topic}
+
+RESEARCH QUESTION:
+{research_question}
+
+RESEARCH BRIEF (use this as context):
+{research_brief}
+
+RETRIEVED CITATIONS (optional):
+{citations}
+
+RETRIEVED KNOWLEDGE (optional):
+{retrieved_knowledge}
+
+Your task is to write a Background Information section (2-3 paragraphs) that includes:
+1. Scientific context and theoretical background relevant to the investigation (relevant chemistry concepts, reaction mechanisms, equilibrium principles, etc.)
+2. Personal interest or motivation for choosing this topic
+3. Significance of the investigation
+
+Use the Research Brief above as context to inform your writing. If Retrieved Knowledge is provided, use it to ground your explanations. The Background Information should be consistent with and build upon the ideas in the Research Brief.
+
+IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
+
+If real citations ARE provided above, cite them inline using numbered markers like [1], [2], etc. The numbers must correspond to the numbered list in RETRIEVED CITATIONS. Do not modify or invent citation information.
+
+Write the Background Information section using markdown formatting. The section should be 2-3 paragraphs and provide context for why this investigation is interesting and scientifically relevant.
+"""
+
+IB_PROCEDURE_PROMPT_CHEMISTRY = """You are writing the Procedure section for an IBDP Chemistry Internal Assessment.
+
+IA TOPIC:
+{ia_topic}
+
+RESEARCH QUESTION:
+{research_question}
+
+RESEARCH BRIEF (use this as context):
+{research_brief}
+
+RETRIEVED CITATIONS (optional):
+{citations}
+
+RETRIEVED KNOWLEDGE (optional):
+{retrieved_knowledge}
+
+Your task is to write a detailed Procedure section in IB style that includes:
+1. Step-by-step experimental procedure
+2. Clear instructions for data collection
+3. Safety considerations (PPE, handling hazardous chemicals, fume hood requirements)
+4. Equipment setup and configuration
+5. Waste disposal procedures
+
+Use the Research Brief above as context to inform your writing. If Retrieved Knowledge is provided, use it to ground your explanations. The Procedure should be consistent with the methodology described in the Research Brief.
+
+IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
+
+If real citations ARE provided above, you may cite them inline using the exact format shown in the RETRIEVED CITATIONS section. Do not modify or invent citation information.
+
+Write the Procedure section using markdown formatting with clear numbered steps. The procedure should be detailed enough for another student to replicate the experiment. Include:
+- Preparation of solutions with concentrations
+- Calibration of instruments
+- Number of trials and repetitions
+- How to handle and dispose of chemicals safely
+"""
+
+IB_RESEARCH_DESIGN_PROMPT_CHEMISTRY = """You are writing the Research Design section for an IBDP Chemistry Internal Assessment.
+
+IA TOPIC:
+{ia_topic}
+
+RESEARCH QUESTION:
+{research_question}
+
+RESEARCH BRIEF (use this as context):
+{research_brief}
+
+RETRIEVED CITATIONS (optional):
+{citations}
+
+RETRIEVED KNOWLEDGE (optional):
+{retrieved_knowledge}
+
+Your task is to write a Research Design section that includes:
+1. **Materials/Equipment List**: Complete list of all equipment, chemicals (with concentrations and quantities), and materials needed with specifications
+2. **Variables Table**: Detailed table with:
+   - Independent Variable (IV): Name, units, levels/range, how it's measured/prepared
+   - Dependent Variable (DV): Name, units, how it's measured (analytical method)
+   - Controlled Variables: For each control variable, include:
+     * Name
+     * How it's controlled (method)
+     * Why it's controlled (reason)
+
+Use the Research Brief above as context to inform your writing. If Retrieved Knowledge is provided, use it to ground your explanations. The Research Design should be consistent with the methodology and variables described in the Research Brief.
+
+IMPORTANT: If the RETRIEVED CITATIONS section above is empty or says "None", do NOT include any citations in your writing. Write the content without any citation markers or brackets.
+
+If real citations ARE provided above, you may cite them inline using the exact format shown in the RETRIEVED CITATIONS section. Do not modify or invent citation information.
+
+Write the Research Design section using markdown formatting. Include a clear materials list (with MSDS references for hazardous chemicals) and a detailed variables table.
+"""
+
 
 # ============================================================================
 # Prompt Bundle Registry
@@ -1241,6 +1441,11 @@ PROMPT_BUNDLES: Dict[str, Dict[str, str]] = {
     "chemistry": {
         "system": IDEATION_SYSTEM_PROMPT_CHEMISTRY,
         "generate": IDEATION_GENERATE_PROMPT_CHEMISTRY,
+        "generate_ia_topic": IDEATION_IA_TOPIC_PROMPT_CHEMISTRY,
+        "generate_rq": IDEATION_RQ_PROMPT_CHEMISTRY,
+        "expand_background": IB_BACKGROUND_PROMPT_CHEMISTRY,
+        "expand_procedure": IB_PROCEDURE_PROMPT_CHEMISTRY,
+        "expand_research_design": IB_RESEARCH_DESIGN_PROMPT_CHEMISTRY,
         "refresh": IDEATION_REFRESH_APPROACH_PROMPT_CHEMISTRY,
         "refine_with_retrieval": IDEATION_REFINE_WITH_RETRIEVAL_PROMPT_CHEMISTRY,
         "direct_feedback": IDEATION_DIRECT_FEEDBACK_PROMPT_CHEMISTRY,

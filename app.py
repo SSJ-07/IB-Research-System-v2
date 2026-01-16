@@ -19,7 +19,7 @@ import uuid
 from src.agents.structured_review import StructuredReviewAgent
 from src.agents.ideation import IdeationAgent
 from src.agents.review import ReviewAgent
-from src.utils.ib_config import load_physics_topics, validate_rq, load_rq_requirements
+from src.utils.ib_config import load_physics_topics, load_chemistry_topics, load_topics_for_subject, validate_rq, load_rq_requirements
 from src.agents.prompts import validate_rq_format
 import json
 import re
@@ -2742,6 +2742,18 @@ def get_physics_topics():
     except Exception as e:
         logger.error(f"Error loading physics topics: {str(e)}")
         return jsonify({"error": f"Failed to load topics: {str(e)}"}), 500
+
+
+@app.route("/api/chemistry/topics", methods=["GET"])
+def get_chemistry_topics():
+    """Get all Chemistry topics from syllabus."""
+    try:
+        topics = load_chemistry_topics()
+        return jsonify({"topics": topics})
+    except Exception as e:
+        logger.error(f"Error loading chemistry topics: {str(e)}")
+        return jsonify({"error": f"Failed to load topics: {str(e)}"}), 500
+
 
 def parse_rq_candidates(content: str):
     """Parse multiple RQ candidates from model output."""

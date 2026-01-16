@@ -15,6 +15,24 @@ logger = logging.getLogger(__name__)
 class ReviewAgent(BaseAgent):
     """Agent for reviewing research ideas."""
 
+    # Subject-specific aspect weights for IBDP IA criteria
+    IBDP_ASPECT_WEIGHTS = {
+        "rq_design_fit": 0.2,
+        "data_analysis_viability": 0.2,
+        "conclusion_traceability": 0.2,
+        "evaluation_potential": 0.2,
+        "safety_practicality": 0.2
+    }
+    
+    # Default aspect weights (for non-IB subjects)
+    DEFAULT_ASPECT_WEIGHTS = {
+        "novelty": 0.2,
+        "clarity": 0.2,
+        "feasibility": 0.2,
+        "effectiveness": 0.2,
+        "impact": 0.2
+    }
+
     def __init__(self, config_path: str = "config/config.yaml"):
         """Initialize with configuration."""
         super().__init__(config_path)
@@ -22,18 +40,27 @@ class ReviewAgent(BaseAgent):
         self.model = self.config["review_agent"].get("model", "gemini/gemini-2.0-flash")
         # self.model = self.config["ideation_agent"].get("model", "gemini/gemini-2.0-flash")
         # Add default weights for scoring
-        self.aspect_weights = {
-            "novelty": 0.2,
-            "clarity": 0.2,
-            "feasibility": 0.2,
-            "effectiveness": 0.2,
-            "impact": 0.2
-        }
+        self.aspect_weights = self.DEFAULT_ASPECT_WEIGHTS.copy()
 
         # Add trajectory-level memory
         self.prior_feedback = []  # Memory of prior feedback
         self.reviewed_aspects = []  # Memory of recently reviewed aspects
         self.memory_size = 3  # Keep last 3 items
+    
+    def get_aspect_weights_for_subject(self, subject: Optional[str] = None) -> Dict[str, float]:
+        """Get the appropriate aspect weights for a given subject.
+        
+        Args:
+            subject: Subject name (e.g., "physics", "chemistry") or None for default
+            
+        Returns:
+            Dictionary of aspect weights for the specified subject
+        """
+        # Physics and Chemistry use IBDP IA criteria
+        if subject and subject.lower() in ["physics", "chemistry"]:
+            return self.IBDP_ASPECT_WEIGHTS.copy()
+        # Default subjects use the original aspect weights
+        return self.DEFAULT_ASPECT_WEIGHTS.copy()
 
     def record_feedback(self, feedback: Dict[str, Any]):
         """Record feedback in memory"""
@@ -179,12 +206,15 @@ class ReviewAgent(BaseAgent):
                 scores = parsed_data["scores"]
                 valid_scores = {k: v for k, v in scores.items() if isinstance(v, (int, float))}
                 if valid_scores:
+                    # Get subject-specific aspect weights
+                    subject_weights = self.get_aspect_weights_for_subject(subject)
+                    
                     # Calculate weighted average only for aspects that have weights defined
                     weighted_sum = 0.0
                     weight_sum = 0.0
                     for aspect, score in valid_scores.items():
-                        if aspect in self.aspect_weights:
-                            weight = self.aspect_weights[aspect]
+                        if aspect in subject_weights:
+                            weight = subject_weights[aspect]
                             weighted_sum += score * weight
                             weight_sum += weight
                     
@@ -193,14 +223,18 @@ class ReviewAgent(BaseAgent):
                         parsed_data["average_score"] = weighted_avg
                         # Print scores and weighted average for verification
                         print("\n=== Review Scores ===")
+                        print(f"Subject: {subject}")
                         print("Individual scores:")
                         for aspect, score in valid_scores.items():
-                            weight = self.aspect_weights.get(aspect, 0.0)
+                            weight = subject_weights.get(aspect, 0.0)
                             print(f"{aspect}: {score} (weight: {weight})")
                         print(f"Weighted average: {weighted_avg:.2f}")
                     else:
-                        logger.warning("No valid aspect weights found for calculating average score")
-                        # Don't set average_score if we can't calculate it properly
+                        logger.warning(f"No valid aspect weights found for calculating average score (subject: {subject})")
+                        # Fallback: Use simple average if no weights match
+                        simple_avg = sum(valid_scores.values()) / len(valid_scores)
+                        parsed_data["average_score"] = simple_avg
+                        logger.info(f"Using simple average as fallback: {simple_avg:.2f}")
                 else:
                     logger.warning(f"Parsed scores but none are valid numbers. Scores: {scores}")
             else:

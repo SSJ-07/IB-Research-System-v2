@@ -804,12 +804,35 @@ function loadAllPhysicsTopics(callback) {
     });
 }
 
+// Chemistry IA Functions - Load all topics from syllabus automatically
+function loadAllChemistryTopics(callback) {
+    $.get('/api/chemistry/topics', function(data) {
+        const topics = data.topics || [];
+        if (callback) callback(topics);
+    }).fail(function() {
+        console.error('Failed to load chemistry topics');
+        if (callback) callback([]);
+    });
+}
+
+// Generic topic loader for any subject
+function loadTopicsForSubject(subject, callback) {
+    if (subject === 'physics') {
+        loadAllPhysicsTopics(callback);
+    } else if (subject === 'chemistry') {
+        loadAllChemistryTopics(callback);
+    } else {
+        // No topics for other subjects
+        if (callback) callback([]);
+    }
+}
+
 function generateIATopic() {
     const researchGoal = $('#chat-input').val() || '';
     
-    // Load all topics from syllabus for physics
-    if (selectedSubject === 'physics') {
-        loadAllPhysicsTopics(function(allTopics) {
+    // Load all topics from syllabus for physics or chemistry
+    if (selectedSubject === 'physics' || selectedSubject === 'chemistry') {
+        loadTopicsForSubject(selectedSubject, function(allTopics) {
             $.ajax({
                 url: '/api/step',
                 method: 'POST',
@@ -832,7 +855,7 @@ function generateIATopic() {
             });
         });
     } else {
-        // For non-physics subjects, proceed without topics
+        // For other subjects, proceed without topics
         $.ajax({
             url: '/api/step',
             method: 'POST',
@@ -941,31 +964,31 @@ window.generateRQ = function generateRQ() {
         });
     };
     
-    // Load all topics from syllabus for physics
-    if (selectedSubject === 'physics') {
+    // Load all topics from syllabus for physics or chemistry
+    if (selectedSubject === 'physics' || selectedSubject === 'chemistry') {
         let callbackFired = false;
         const timeout = setTimeout(function() {
             if (!callbackFired) {
-                console.warn('loadAllPhysicsTopics timeout, proceeding without topics');
+                console.warn(`loadTopicsForSubject(${selectedSubject}) timeout, proceeding without topics`);
                 sendRQRequest([]);
             }
         }, 5000); // 5 second timeout
         
         try {
-            loadAllPhysicsTopics(function(allTopics) {
+            loadTopicsForSubject(selectedSubject, function(allTopics) {
                 callbackFired = true;
                 clearTimeout(timeout);
-                console.log('Loaded all physics topics from syllabus:', allTopics.length);
+                console.log(`Loaded all ${selectedSubject} topics from syllabus:`, allTopics.length);
                 sendRQRequest(allTopics);
             });
         } catch (error) {
             callbackFired = true;
             clearTimeout(timeout);
-            console.error('Error loading physics topics:', error);
+            console.error(`Error loading ${selectedSubject} topics:`, error);
             sendRQRequest([]);
         }
     } else {
-        // For non-physics subjects, proceed without topics
+        // For other subjects, proceed without topics
         sendRQRequest([]);
     }
 };
@@ -1302,9 +1325,9 @@ function submitRQFeedback(rq, feedback, warnings) {
         });
     };
     
-    // Load all topics from syllabus for physics
-    if (selectedSubject === 'physics') {
-        loadAllPhysicsTopics(function(allTopics) {
+    // Load all topics from syllabus for physics or chemistry
+    if (selectedSubject === 'physics' || selectedSubject === 'chemistry') {
+        loadTopicsForSubject(selectedSubject, function(allTopics) {
             sendFeedbackRequest(allTopics);
         });
     } else {

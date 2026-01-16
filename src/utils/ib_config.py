@@ -1,4 +1,4 @@
-"""Configuration loading helpers for IB Physics topics and RQ format requirements."""
+"""Configuration loading helpers for IB topics and RQ format requirements."""
 
 from typing import List, Dict, Tuple, Optional
 import yaml
@@ -15,6 +15,37 @@ def load_physics_topics() -> List[Dict[str, str]]:
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     return config.get("topics", [])
+
+
+def load_chemistry_topics() -> List[Dict[str, str]]:
+    """Load all Chemistry topics from config file.
+    
+    Returns:
+        List of topic dictionaries with 'code', 'name', and 'category' keys
+    """
+    config_path = Path(__file__).parent.parent.parent / "config" / "ib" / "chemistry_topics.yaml"
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    return config.get("topics", [])
+
+
+def load_topics_for_subject(subject: str) -> List[Dict[str, str]]:
+    """Load topics for a given subject.
+    
+    Args:
+        subject: Subject name (e.g., "physics", "chemistry")
+        
+    Returns:
+        List of topic dictionaries with 'code', 'name', and 'category' keys
+    """
+    subject_lower = subject.lower().strip() if subject else ""
+    
+    if subject_lower == "physics":
+        return load_physics_topics()
+    elif subject_lower == "chemistry":
+        return load_chemistry_topics()
+    else:
+        return []
 
 
 def load_rq_requirements(subject: str, assessment_type: str) -> Dict:
