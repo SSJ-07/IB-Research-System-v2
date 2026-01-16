@@ -28,6 +28,7 @@ import traceback
 import sys
 import logging
 import click
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -2839,15 +2840,37 @@ def normalize_author(authors):
 
 def extract_paper_url(citation_dict, paper):
     """Extract the best available URL for a paper."""
-    if isinstance(citation_dict, dict):
-        if citation_dict.get("url"):
-            return citation_dict.get("url")
+    # 1. Prefer open access PDF
     if paper.get("openAccessPdf") and paper["openAccessPdf"].get("url"):
         return paper["openAccessPdf"]["url"]
-    if paper.get("url"):
-        return paper["url"]
-    if paper.get("corpus_id"):
-        return f"https://www.semanticscholar.org/paper/{paper['corpus_id']}"
+    
+    # 2. Prefer paper URL from metadata (canonical)
+    # Skip if it matches the broken short format https://www.semanticscholar.org/paper/12345
+    url = paper.get("url")
+    if url and not re.search(r'semanticscholar\.org/paper/\d+$', url):
+        return url
+    
+    # 3. Prefer explicit citation URL if provided
+    cite_url = citation_dict.get("url") if isinstance(citation_dict, dict) else None
+    if cite_url and not re.search(r'semanticscholar\.org/paper/\d+$', cite_url):
+        return cite_url
+    
+    # 4. Try paperId (hash format)
+    paper_id = paper.get("paperId") or paper.get("paper_id")
+    if not paper_id and isinstance(citation_dict, dict):
+        paper_id = citation_dict.get("paperId") or citation_dict.get("paper_id")
+    
+    # Only use /paper/ path for hexadecimal hashes (not purely numeric)
+    if paper_id and not str(paper_id).isdigit():
+        return f"https://www.semanticscholar.org/paper/{paper_id}"
+    
+    # 5. Fallback to official API redirect service for numeric IDs
+    # This is what works in the literature panel
+    cid = paper.get("corpus_id") or paper.get("corpusId") or (paper_id if paper_id and str(paper_id).isdigit() else None)
+    if cid:
+        numeric_id = str(cid).replace("CorpusID:", "").strip()
+        return f"https://api.semanticscholar.org/CorpusID:{numeric_id}"
+    
     return ""
 
 def retrieve_section_knowledge(section: str, ia_topic: str, research_question: str, additional_context: str = ""):
