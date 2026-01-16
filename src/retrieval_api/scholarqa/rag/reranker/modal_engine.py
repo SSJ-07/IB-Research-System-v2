@@ -1,15 +1,31 @@
 from typing import Dict, Any, Optional, Tuple, Union, List
-from sentence_transformers import CrossEncoder
+
+# Lazy imports with graceful fallback for production (where torch/sentence_transformers aren't installed)
+try:
+    from sentence_transformers import CrossEncoder
+    import torch
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+    CrossEncoder = None
+    torch = None
+
+# Import numpy separately (might be available even without torch)
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 import modal
 import os
-import numpy as np
-import torch
-
-from scholarqa.rag.reranker.reranker_base import AbstractReranker, RERANKER_MAPPING
 import logging
 
+from scholarqa.rag.reranker.reranker_base import AbstractReranker, RERANKER_MAPPING
+
 logger = logging.getLogger(__name__)
+
+if not HAS_TORCH:
+    logger.warning("sentence_transformers/torch not available - rerankers will not work. Install requirements-dev.txt for local development.")
 
 
 class ModalReranker(AbstractReranker):
@@ -24,6 +40,11 @@ class ModalReranker(AbstractReranker):
     #         (query, documents, self.batch_size), streaming=False
     #     )
     def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2", batch_size: int = 32):
+        if not HAS_TORCH:
+            raise ImportError(
+                "torch and sentence_transformers are required for ModalReranker. "
+                "Install with: pip install -r requirements-dev.txt"
+            )
         logger.info(f"Using HuggingFace model {model_name} for reranking")
         self.model = CrossEncoder(model_name, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
         self.batch_size = batch_size
@@ -111,6 +132,11 @@ class ModalEngine:
 
 class HuggingFaceReranker(AbstractReranker):
     def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2", batch_size: int = 32):
+        if not HAS_TORCH:
+            raise ImportError(
+                "torch and sentence_transformers are required for HuggingFaceReranker. "
+                "Install with: pip install -r requirements-dev.txt"
+            )
         logger.info(f"Using HuggingFace model {model_name} for reranking")
         self.model = CrossEncoder(model_name, device=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
         self.batch_size = batch_size

@@ -1,9 +1,9 @@
 from .scholar_qa import ScholarQA
 from .rag.retrieval import PaperFinderWithReranker, PaperFinder
 from .rag.retriever_base import FullTextRetriever, AbstractRetriever
-from .rag.reranker.modal_engine import ModalReranker
-from .rag.reranker.modal_engine import HuggingFaceReranker
+# Removed reranker imports to avoid loading torch/sentence_transformers at module level
+# Import them directly from .rag.reranker.modal_engine when needed (lazy import)
 
 __all__ = ["ScholarQA", "PaperFinderWithReranker", "PaperFinder", "FullTextRetriever", "AbstractRetriever",
-           "ModalReranker", "HuggingFaceReranker", "llms", "postprocess", "preprocess",
+           "llms", "postprocess", "preprocess",
            "utils", "models", "rag", "state_mgmt"]
