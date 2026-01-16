@@ -620,6 +620,53 @@ html {
     display: inline-block;
 }
 
+/* Start New Idea button - matches auto-generate styling */
+.start-new-idea-btn {
+    width: auto !important;
+    padding: 0 16px !important;
+    background-color: #f8fafc;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.start-new-idea-btn img {
+    width: 20px;
+    height: 20px;
+    opacity: 0.8;
+}
+
+.start-new-idea-btn span {
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.start-new-idea-btn:hover {
+    background-color: #f1f5f9;
+}
+
+.top-bar button.start-new-idea-btn:hover {
+    background-color: #f1f5f9;
+}
+
+.top-bar button.start-new-idea-btn img {
+    width: 20px;
+    height: 20px;
+    opacity: 0.8;
+}
+
+.top-bar button.start-new-idea-btn span {
+    white-space: nowrap;
+    display: inline-block;
+}
+
 /* Keep existing .auto-generate and other styles */
 
 /* Remove the topic-title class since we're not using it anymore */

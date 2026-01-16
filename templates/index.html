@@ -609,9 +609,9 @@
         <div class="chat">
             <div class="top-bar">
                 <div class="top-bar-buttons">
-                    <button class="new-research-btn" onclick="startNewResearch(); return false;" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-                        <span>🔄</span>
-                        <span>New Research</span>
+                    <button class="start-new-idea-btn" onclick="startNewResearch(); return false;">
+                        <img src="{{ url_for('static', filename='icons/refresh.svg') }}" alt="Start New Idea">
+                        <span>Start New Idea</span>
                     </button>
                     <button class="auto-generate" onclick="event.preventDefault(); toggleAutoGenerate(); return false;">
                         <img src="{{ url_for('static', filename='icons/auto.svg') }}" alt="Auto">
