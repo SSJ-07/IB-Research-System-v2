@@ -7,6 +7,7 @@ import retry
 import random
 from typing import Dict, Any, Optional, List, Tuple
 import os
+import ast
 # from google import genai
 from .base import BaseAgent
 from .prompts import (
@@ -17,6 +18,13 @@ import litellm
 
 class IdeationAgent(BaseAgent):
     """Agent responsible for generating and refining research ideas."""
+    
+    # Regex to match label-only lines (ends with colon, no content after)
+    LABEL_ONLY_RE = re.compile(r"^\*{0,2}([A-Za-z][A-Za-z\s]+):\*{0,2}$")
+    
+    # Regex patterns for normalizing bold labels
+    _BOLD_LABEL_RE = re.compile(r"^\*\*(.+?):\*\*\s*(.*)$")   # **Label:** rest
+    _TRAILING_BOLD_RE = re.compile(r"^(.+?):\*\*\s*(.*)$")    # Label:** rest (broken)
 
     def __init__(self, config_path: str):
         """Initialize the ideation agent."""
@@ -175,6 +183,140 @@ class IdeationAgent(BaseAgent):
                 "raw_llm_output": ""
             }
 
+    def _normalize_bold_label(self, line: str) -> str:
+        """Normalize broken bold label patterns to correct format."""
+        line = line.strip()
+
+        # Already correct: **Label:** rest
+        m = self._BOLD_LABEL_RE.match(line)
+        if m:
+            label, rest = m.group(1).strip(), m.group(2).strip()
+            return f"**{label}:** {rest}".rstrip()
+
+        # Broken: Label:** rest  -> fix it
+        m = self._TRAILING_BOLD_RE.match(line)
+        if m:
+            label, rest = m.group(1).strip(), m.group(2).strip()
+            return f"**{label}:** {rest}".rstrip()
+
+        return line
+
+    def _dict_to_markdown(self, plan: Dict[str, Any]) -> str:
+        """Convert a dict to markdown format with headers and bullet lists."""
+        out = []
+        for k, v in plan.items():
+            header = str(k).replace("_", " ").strip()
+            out.append(f"### {header}\n")
+            if isinstance(v, list):
+                for item in v:
+                    # Case: list of dicts like {"item": "...", "specifications": "..."}
+                    if isinstance(item, dict):
+                        name = item.get("item") or item.get("name") or item.get("title")
+                        specs = item.get("specifications") or item.get("spec") or item.get("details") or item.get("notes")
+
+                        if name and specs:
+                            out.append(f"- **{str(name).strip()}** — {str(specs).strip()}")
+                        elif name:
+                            out.append(f"- **{str(name).strip()}**")
+                        else:
+                            # fallback: pretty print dict as JSON
+                            out.append(f"- {json.dumps(item, ensure_ascii=False)}")
+                        continue
+
+                    # Case: normal string items
+                    line = str(item).strip()
+                    # remove leading bullets like "* " "- " "• "
+                    line = line.lstrip(" \t*-•").strip()
+                    
+                    # Check if this is a label-only line (ends with colon, no content after)
+                    m = self.LABEL_ONLY_RE.match(line)
+                    if m:
+                        # Convert label-only line to header
+                        out.append(f"#### {m.group(1).strip()}")
+                    elif line:
+                        # Check if line starts with a number (numbered procedure)
+                        if re.match(r"^\d+\.", line):
+                            # Keep numbered lines as-is (don't add bullet prefix)
+                            out.append(line)
+                        else:
+                            # Normal content - normalize broken bold labels first
+                            line = self._normalize_bold_label(line)
+                            out.append(f"- {line}")
+            else:
+                s = str(v).strip()
+                s = s.lstrip(" \t*-•").strip()
+                # Check if this is a label-only line
+                m = self.LABEL_ONLY_RE.match(s)
+                if m:
+                    # Convert label-only line to header
+                    out.append(f"#### {m.group(1).strip()}")
+                elif s:
+                    out.append(s)
+            out.append("")  # blank line
+        return "\n".join(out).strip()
+
+    def _format_experiment_plan(self, plan: Any) -> str:
+        """
+        Normalize experiment_plan into clean markdown.
+        Handles:
+          - dict
+          - JSON object string
+          - Python dict string (from LLM)
+          - fallback plain text
+        """
+        if plan is None:
+            return ""
+
+        # If already a dict, format directly
+        if isinstance(plan, dict):
+            return self._dict_to_markdown(plan)
+
+        # If it's a list (rare), join as bullets
+        if isinstance(plan, list):
+            lines = []
+            for item in plan:
+                line = str(item).strip().lstrip(" \t*-•").strip()
+                # Check if this is a label-only line (ends with colon, no content after)
+                m = self.LABEL_ONLY_RE.match(line)
+                if m:
+                    # Convert label-only line to header
+                    lines.append(f"#### {m.group(1).strip()}")
+                elif line:
+                    # Check if line starts with a number (numbered procedure)
+                    if re.match(r"^\d+\.", line):
+                        # Keep numbered lines as-is (don't add bullet prefix)
+                        lines.append(line)
+                    else:
+                        # Normal content - keep as bullet with inline bold preserved
+                        lines.append(f"- {line}")
+            return "\n".join(lines).strip()
+
+        # Otherwise treat as string
+        s = str(plan).strip()
+        if not s:
+            return ""
+
+        # Try JSON parse first if it looks like JSON
+        if s.startswith("{") and '"' in s:
+            try:
+                obj = json.loads(s)
+                if isinstance(obj, dict):
+                    return self._dict_to_markdown(obj)
+            except Exception:
+                pass
+
+        # Try Python literal eval if it looks like a Python dict (single quotes, etc.)
+        if s.startswith("{") and ("'" in s or "None" in s or "True" in s or "False" in s):
+            try:
+                obj = ast.literal_eval(s)  # safe for literals
+                if isinstance(obj, dict):
+                    return self._dict_to_markdown(obj)
+            except Exception:
+                pass
+
+        # Fallback: return as plain text
+        return s
+
     def _format_structured_idea(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Format extracted JSON data into a consistent structure."""
         result = {
@@ -194,7 +336,8 @@ class IdeationAgent(BaseAgent):
             
             # Add experiment plan if available
             if "experiment_plan" in data:
-                content_parts.append(f"## Experiment Plan\n\n{data['experiment_plan']}\n\n")
+                formatted_plan = self._format_experiment_plan(data["experiment_plan"])
+                content_parts.append(f"## Experiment Plan\n\n{formatted_plan}\n\n")
             
             # Add test cases if available
             if "test_case_examples" in data:
