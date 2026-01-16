@@ -244,6 +244,24 @@ $(document).ready(function () {
         switchTab('ia-section');
     });
 
+    // Copy Brief button
+    $(document).on('click', '#copy-brief-btn', function(e) {
+        e.preventDefault();
+        copyResearchBrief();
+    });
+
+    // Watch for changes to main-idea to show/hide copy button
+    const mainIdea = document.getElementById('main-idea');
+    if (mainIdea) {
+        const observer = new MutationObserver(function(mutations) {
+            updateCopyButtonVisibility();
+        });
+        observer.observe(mainIdea, { childList: true, subtree: true, characterData: true });
+        
+        // Initial check
+        updateCopyButtonVisibility();
+    }
+
     // Initialization for tabs
     $('#tab-research-brief').show();
     $('#tab-ia-section').show();
@@ -336,6 +354,112 @@ function renderCitationList(citations, options = {}) {
     return { html: citationsHtml, count: validCitations.length, citations: validCitations };
 }
 
+const COPY_ICON_SVG = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    </svg>
+`;
+
+const CHECK_ICON_SVG = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5"></path>
+    </svg>
+`;
+
+function ensureCopyButtonContainer() {
+    const mainIdea = document.getElementById('main-idea');
+    if (!mainIdea) return null;
+
+    let container = document.getElementById('copy-brief-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'copy-brief-container';
+        container.className = 'copy-brief-container';
+
+        const button = document.createElement('button');
+        button.id = 'copy-brief-btn';
+        button.className = 'copy-brief-btn';
+        button.title = 'Copy research brief to clipboard';
+        button.innerHTML = COPY_ICON_SVG;
+        container.appendChild(button);
+
+        mainIdea.appendChild(container);
+    } else if (container.parentElement !== mainIdea) {
+        mainIdea.appendChild(container);
+    } else if (mainIdea.lastElementChild !== container) {
+        // Ensure the button container stays at the end of the content
+        mainIdea.appendChild(container);
+    }
+
+    return container;
+}
+
+// Copy research brief to clipboard
+function copyResearchBrief() {
+    const mainIdea = document.getElementById('main-idea');
+    if (!mainIdea) return;
+    
+    // Get the text content (without HTML)
+    const textContent = mainIdea.innerText || mainIdea.textContent;
+    
+    if (!textContent || textContent.trim() === '') {
+        console.log('No content to copy');
+        return;
+    }
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(textContent.trim()).then(() => {
+        // Show success feedback
+        const btn = document.getElementById('copy-brief-btn');
+        if (btn) {
+            btn.classList.add('copied');
+            btn.innerHTML = CHECK_ICON_SVG;
+            
+            // Reset after 2 seconds
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                btn.innerHTML = COPY_ICON_SVG;
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Failed to copy text:', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = textContent.trim();
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            const btn = document.getElementById('copy-brief-btn');
+            if (btn) {
+                btn.classList.add('copied');
+                btn.innerHTML = CHECK_ICON_SVG;
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = COPY_ICON_SVG;
+                }, 2000);
+            }
+        } catch (e) {
+            console.error('Fallback copy failed:', e);
+        }
+        document.body.removeChild(textArea);
+    });
+}
+
+// Show/hide copy button based on content
+function updateCopyButtonVisibility() {
+    const mainIdea = document.getElementById('main-idea');
+    const copyContainer = ensureCopyButtonContainer();
+    
+    if (mainIdea && copyContainer) {
+        const hasContent = (mainIdea.textContent || '').trim().length > 0;
+        copyContainer.style.display = hasContent ? 'block' : 'none';
+    }
+}
+
 // Helper function to ensure consistent section header styling across the application
 function ensureSectionHeaderStyles() {
     const styleId = 'section-header-styles';
@@ -357,6 +481,83 @@ function ensureSectionHeaderStyles() {
         `;
         document.head.appendChild(styleEl);
     }
+}
+
+// Helper function to parse Python dict string to JSON
+function parsePythonDictString(dictStr) {
+    if (typeof dictStr !== 'string') return null;
+    
+    try {
+        // Convert Python dict syntax to JSON
+        let jsonStr = dictStr
+            .replace(/'/g, '"')  // Replace single quotes with double quotes
+            .replace(/True/g, 'true')
+            .replace(/False/g, 'false')
+            .replace(/None/g, 'null');
+        
+        // Parse as JSON
+        return JSON.parse(jsonStr);
+    } catch (e) {
+        console.warn("Failed to parse Python dict string:", e);
+        return null;
+    }
+}
+
+// Helper function to format experiment plan dict as markdown
+function formatExperimentPlanDict(planObj) {
+    if (!planObj || typeof planObj !== 'object') return String(planObj);
+    
+    let result = '';
+    for (const [key, value] of Object.entries(planObj)) {
+        // Format key as header
+        const headerKey = key.replace(/_/g, ' ');
+        result += `### ${headerKey}\n\n`;
+        
+        // Format value
+        if (Array.isArray(value)) {
+            // Format array items as bullet list, removing leading * markers
+            value.forEach(item => {
+                if (typeof item === 'string') {
+                    // Remove leading * or - markers and clean up
+                    const cleaned = item.replace(/^[\s]*[\*\-\u2022]\s+/, '').trim();
+                    if (cleaned) {
+                        result += `- ${cleaned}\n`;
+                    }
+                } else {
+                    result += `- ${String(item)}\n`;
+                }
+            });
+        } else if (typeof value === 'string') {
+            // Remove leading * or - markers
+            const cleaned = value.replace(/^[\s]*[\*\-\u2022]\s+/, '').trim();
+            result += `${cleaned}\n`;
+        } else {
+            result += `${String(value)}\n`;
+        }
+        result += '\n';
+    }
+    return result;
+}
+
+// Helper function to check and format experiment plan if it's a Python dict string
+function formatExperimentPlan(plan) {
+    if (!plan) return plan;
+    
+    // If it's already an object, format it directly
+    if (typeof plan === 'object' && plan !== null) {
+        return formatExperimentPlanDict(plan);
+    }
+    
+    // If it's a string that looks like a Python dict, parse and format it
+    if (typeof plan === 'string' && plan.trim().startsWith('{') && plan.includes("'")) {
+        const parsed = parsePythonDictString(plan);
+        if (parsed) {
+            return formatExperimentPlanDict(parsed);
+        }
+    }
+    
+    // Otherwise return as-is
+    return plan;
 }
 
 // New function to parse and format JSON structured ideas with fallback
@@ -387,7 +588,8 @@ function parseAndFormatStructuredIdea(ideaContent) {
                 }
                 
                 if (ideaJson.experiment_plan) {
-                    formattedContent += `## Experiment Plan\n\n${ideaJson.experiment_plan}\n\n***\n\n`;
+                    const formattedPlan = formatExperimentPlan(ideaJson.experiment_plan);
+                    formattedContent += `## Experiment Plan\n\n${formattedPlan}\n\n***\n\n`;
                 }
                 
                 if (ideaJson.test_case_examples) {
@@ -444,7 +646,8 @@ function parseAndFormatStructuredIdea(ideaContent) {
             // Extract experiment plan
             let experimentPlan = extractField(ideaContent, "experiment_plan");
             if (experimentPlan) {
-                formattedContent += `## Experiment Plan\n\n${experimentPlan}\n\n***\n\n`;
+                const formattedPlan = formatExperimentPlan(experimentPlan);
+                formattedContent += `## Experiment Plan\n\n${formattedPlan}\n\n***\n\n`;
             }
             
             // Extract test case examples
@@ -471,6 +674,7 @@ function parseAndFormatStructuredIdea(ideaContent) {
     console.log("No JSON structure found, returning original");
     return ideaContent;
 }
+
 
 // Helper function to extract fields using regex
 function extractField(content, fieldName) {

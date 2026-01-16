@@ -3521,3 +3521,43 @@ hr {
     overflow-y: auto;
     padding-right: 5px;
 }
+
+/* Copy Brief Button */
+.copy-brief-container {
+    display: none;
+    text-align: right;
+    padding: 8px 0 0;
+}
+
+.copy-brief-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-brief-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.copy-brief-btn:active {
+    background: #dee2e6;
+}
+
+.copy-brief-btn.copied {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.copy-brief-btn svg {
+    flex-shrink: 0;
+}
