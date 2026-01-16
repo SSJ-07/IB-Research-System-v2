@@ -1,0 +1,21 @@
+# =============================================================================
+# DEVELOPMENT REQUIREMENTS (Local development with HuggingFace reranker)
+# =============================================================================
+# Use this file for local development when you need the HuggingFace reranker.
+# Install with: pip install -r requirements-dev.txt
+#
+# NOTE: These packages are NOT installed on Railway to keep image under 4GB.
+# =============================================================================
+
+# Include all production dependencies
+-r requirements.txt
+
+# HuggingFace reranker dependencies (adds ~2GB+)
+# Only install locally when RERANK_MODE=hf is needed
+torch>=2.0.0
+transformers>=4.30.0
+sentence-transformers>=2.2.0
+
+# Optional: For advanced embedding models
+# numpy>=1.24.0  # Usually installed by torch
+

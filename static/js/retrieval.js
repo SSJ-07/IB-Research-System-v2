@@ -275,6 +275,10 @@ const retrieval = {
     displayResults: function(results) {
         console.log("LiteraturePanel: displayResults called with:", results);
         
+        // Remove any loading states before displaying results (safety measure)
+        $("#chat-box .message-container .loading-state").parent().remove();
+        $("#chat-box .loading-state").parent().remove();
+        
         // Verify DOM elements exist
         const qaPlaceholder = $("#qa-placeholder");
         const qaContent = $("#qa-content");
@@ -415,8 +419,11 @@ const retrieval = {
     
     // Display a summary of results in the chat area
     displayResultsInChat: function(results) {
-        // Remove loading message if exists
-        $("#chat-box .message-container:last-child .loading-state").remove();
+        // Remove ALL loading states (more robust than just removing the last one)
+        // Remove the entire message container that contains loading states
+        $("#chat-box .message-container").has(".loading-state").remove();
+        // Also remove any standalone loading states as a fallback
+        $("#chat-box .loading-state").parent().remove();
         
         const isSection = this.targetSection !== null;
         const targetName = isSection ? this.targetSection.replace('_', ' ') : "Research Idea";

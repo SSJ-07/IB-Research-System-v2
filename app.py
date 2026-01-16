@@ -37,8 +37,9 @@ sys.path.insert(0, str(Path(__file__).parent / "src" / "retrieval_api"))
 from scholarqa import ScholarQA
 from scholarqa.rag.retrieval import PaperFinder, PaperFinderWithReranker
 from scholarqa.rag.retriever_base import FullTextRetriever
-from scholarqa.rag.reranker.modal_engine import ModalReranker
-from scholarqa.rag.reranker.modal_engine import HuggingFaceReranker
+# NOTE: HuggingFace reranker imports are done lazily to avoid loading torch/transformers
+# on Railway where RERANK_MODE=none (default). This keeps the Docker image under 4GB.
+# See reranker initialization below for lazy import logic.
 import pymupdf  # PyMuPDF for PDF parsing
 # Import the key manager
 # from src.utils.key_manager import encrypt_api_key, decrypt_api_key, get_client_encryption_script
@@ -142,10 +143,40 @@ else:
     if not azure_endpoint:
         logger.warning("AZURE_OPENAI_ENDPOINT not set while in deployment mode")
 
+# =============================================================================
+# RERANKER CONFIGURATION
+# =============================================================================
+# RERANK_MODE controls whether to use HuggingFace reranker:
+#   - "hf"   : Use HuggingFace cross-encoder reranker (requires torch/transformers - LOCAL DEV ONLY)
+#   - "none" : No reranking, use retrieval scores only (PRODUCTION DEFAULT)
+#
+# On Railway: Leave RERANK_MODE unset or set to "none" to avoid loading torch (~2GB+)
+# Locally: Set RERANK_MODE=hf in .env to enable reranking
+# =============================================================================
+
 retriever = FullTextRetriever(n_retrieval=20, n_keyword_srch=20)
-# paper_finder = PaperFinder(retriever, context_threshold=0.1)
-reranker = HuggingFaceReranker(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2", batch_size=256)
-paper_finder = PaperFinderWithReranker(retriever, reranker=reranker, n_rerank=10, context_threshold=0.1)
+
+# Determine rerank mode from environment
+# Default: "none" (no reranking) to keep Railway image small
+rerank_mode = os.environ.get("RERANK_MODE", "none").lower()
+
+if rerank_mode == "hf":
+    # LAZY IMPORT: Only import HuggingFace reranker when explicitly enabled
+    # This prevents torch/transformers from being loaded on Railway
+    try:
+        from scholarqa.rag.reranker.modal_engine import HuggingFaceReranker
+        reranker = HuggingFaceReranker(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2", batch_size=256)
+        paper_finder = PaperFinderWithReranker(retriever, reranker=reranker, n_rerank=10, context_threshold=0.1)
+        logger.info("Using HuggingFace reranker (RERANK_MODE=hf)")
+    except ImportError as e:
+        logger.warning(f"HuggingFace reranker not available (missing torch/transformers): {e}")
+        logger.warning("Falling back to no reranking. Install requirements-dev.txt for local reranking.")
+        paper_finder = PaperFinder(retriever, context_threshold=0.1)
+else:
+    # Default: No reranking (keeps Railway image under 4GB)
+    paper_finder = PaperFinder(retriever, context_threshold=0.1)
+    logger.info("Reranking disabled (RERANK_MODE=none or unset)")
+
 scholar_qa = ScholarQA(paper_finder=paper_finder, llm_model="gemini/gemini-2.0-flash-lite")
 
 # API Key management endpoints with improved security
