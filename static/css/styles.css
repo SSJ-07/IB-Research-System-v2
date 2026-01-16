@@ -6,15 +6,43 @@
     margin-bottom: 15px;
 }
 
-/* Compact select styling */
+/* Compact select styling - Normalized for Safari/Chrome/Firefox consistency */
 .compact-select {
-    transition: width 0.2s ease;
+    /* Remove native browser styling (critical for Safari) */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    /* Base styling */
+    flex: 0 0 auto;
+    padding: 8px 32px 8px 12px; /* Extra right padding for arrow */
+    border: 1px solid #e0e3e8;
+    border-radius: 8px;
+    background-color: #fff;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    width: auto;
+    min-width: 130px;
+    line-height: 1.2;
+    
+    /* Custom arrow icon */
+    background-image: url("/static/icons/chevron-down.svg");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+    
+    transition: width 0.2s ease, border-color 0.2s ease;
 }
 
 .compact-select:focus {
     outline: none;
     border-color: #007bff;
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.compact-select:hover {
+    border-color: #cbd5e1;
 }
 
 /* Subject selector container */
