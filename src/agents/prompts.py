@@ -1466,5 +1466,5 @@ def get_prompts_for_subject(subject: Optional[str] = None) -> Dict[str, str]:
     Returns:
         Dictionary of prompts for the specified subject, or default if subject not found
     """
-    key = (subject or "default").strip().lower() if subject else "default"
-    return PROMPT_BUNDLES.get(key, PROMPT_BUNDLES["default"])
+    key = (subject or "physics").strip().lower() if subject else "physics"  # Changed from "default" to "physics"
+    return PROMPT_BUNDLES.get(key, PROMPT_BUNDLES["physics"])  # Changed from "default" to "physics"
