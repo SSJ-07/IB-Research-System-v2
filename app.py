@@ -1868,7 +1868,16 @@ def select_node():
     if node:
         # Update current node and idea
         current_node = node
-        main_idea = node.state.current_idea
+        # Convert to string if it's not already
+        idea_content = node.state.current_idea
+        if isinstance(idea_content, (dict, list)):
+            idea_content = json.dumps(idea_content)
+        elif isinstance(idea_content, tuple):
+            idea_content = str(idea_content)
+        elif not isinstance(idea_content, str):
+            idea_content = str(idea_content) if idea_content is not None else ""
+        
+        main_idea = idea_content
         
         # Log this action in chat
         chat_messages.append({
@@ -1878,7 +1887,7 @@ def select_node():
         
         # Prepare response data
         response = {
-            "idea": main_idea,
+            "idea": idea_content,
             "node_data": {
                 "id": node.id,
                 "action": node.action or "root",
@@ -2070,7 +2079,7 @@ def improve_idea():
     try:
         # Use ideation_agent instead of structured_review_agent
         subject_from_state = getattr(current_node.state, "subject", None) if current_node else selected_subject
-        improved_idea = ideation_agent.improve_idea(idea, accepted_reviews, subject=subject_from_state)
+        improved_idea, raw_output = ideation_agent.improve_idea(idea, accepted_reviews, subject=subject_from_state)
 
         # Update the main idea in our application state
         main_idea = improved_idea

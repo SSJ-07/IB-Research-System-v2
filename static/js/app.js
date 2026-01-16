@@ -2559,9 +2559,17 @@ function selectNode(d) {
             // Update UI to reflect selected node
             // Parse and format any JSON structure in the idea
             if (response.idea) {
-                let structuredIdea = parseAndFormatStructuredIdea(response.idea);
+                let structuredIdea = response.idea;
                 
-                // Ensure structuredIdea is a string (handle arrays)
+                // If it's already an object, convert to JSON string first
+                if (typeof structuredIdea === 'object' && structuredIdea !== null && !Array.isArray(structuredIdea)) {
+                    structuredIdea = JSON.stringify(structuredIdea);
+                }
+                
+                // Now parse and format
+                structuredIdea = parseAndFormatStructuredIdea(structuredIdea);
+                
+                // Ensure it's a string
                 if (Array.isArray(structuredIdea)) {
                     structuredIdea = structuredIdea.length > 0 ? String(structuredIdea[0]) : '';
                 } else if (structuredIdea !== null && structuredIdea !== undefined) {
