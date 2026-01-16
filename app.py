@@ -3567,6 +3567,6 @@ def check_configuration():
     return len(issues) == 0
 
 if __name__ == "__main__":
-    # Get port from config or environment variable, default to 5001
-    port = int(os.environ.get('FLASK_RUN_PORT', config.get('app', {}).get('port', 5001)))
+    # Railway uses PORT, fallback to FLASK_RUN_PORT for local dev
+    port = int(os.environ.get('PORT', os.environ.get('FLASK_RUN_PORT', config.get('app', {}).get('port', 5001))))
     socketio.run(app, host='0.0.0.0', port=port, debug=True, allow_unsafe_werkzeug=True)
