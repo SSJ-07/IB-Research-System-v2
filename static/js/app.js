@@ -1977,15 +1977,27 @@ function toggleAutoGenerate() {
                         parseAndFormatStructuredIdea(data.idea) : data.idea;
                     const formattedContent = formatMessage ? formatMessage(structuredIdea) : structuredIdea;
                     $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
+                    $("#main-idea").show();
+                    showGenerateRQButton();
                     
                     if (typeof window !== 'undefined') {
                         window.main_idea = data.idea;
+                    }
+                    
+                    // Update score display if available
+                    if (data.average_score !== undefined && typeof updateScoreDisplay === 'function') {
+                        updateScoreDisplay(data.average_score);
+                    }
+                    
+                    // Reload tree to show selected node
+                    if (typeof loadTree === 'function') {
+                        loadTree();
                     }
                 }
                 
                 const finalMessage = $('<div></div>')
                     .attr('data-sender', 'system')
-                    .text(`🏆 Best idea selected from exploration.`)
+                    .text(`🏆 Best idea selected from exploration (Score: ${data.average_score ? data.average_score.toFixed(1) : '?'}/10).`)
                     .hide();
                 chatArea.append(finalMessage);
                 finalMessage.slideDown();
@@ -2087,11 +2099,21 @@ function toggleAutoGenerate() {
                             if (typeof window !== 'undefined') {
                                 window.main_idea = data.idea;
                             }
+                            
+                            // Update score display if available
+                            if (data.average_score !== undefined && typeof updateScoreDisplay === 'function') {
+                                updateScoreDisplay(data.average_score);
+                            }
+                            
+                            // Reload tree to show selected node
+                            if (typeof loadTree === 'function') {
+                                loadTree();
+                            }
                         }
                         
                         const finalMessage = $('<div></div>')
                             .attr('data-sender', 'system')
-                            .text(`🏆 Best idea selected from ${savedIterationCount} iterations.`)
+                            .text(`🏆 Best idea selected from ${savedIterationCount} iterations (Score: ${data.average_score ? data.average_score.toFixed(1) : '?'}/10).`)
                             .hide();
                         chatArea.append(finalMessage);
                         finalMessage.slideDown();
@@ -3678,6 +3700,88 @@ window.updateScore = updateScore;
 window.updateMainIdea = updateMainIdea;
 window.addExplorationMessage = addExplorationMessage;
 window.updateTreeVisualization = updateTreeVisualization;
+
+// New Research reset function - clears all state and starts fresh
+function startNewResearch() {
+    if (!confirm("Start a new research idea? This will clear the current one.")) return;
+
+    $.post('/api/reset', function() {
+        // Clear major UI regions
+        $('#chat-box').empty();
+        $('#main-idea').empty();
+        $('#expanded-sections').empty();
+        
+        // Clear IA sections content
+        $('#background-content').empty();
+        $('#procedure-content').empty();
+        $('#research_design-content').empty();
+        $('#background-citations').empty();
+        $('#procedure-citations').empty();
+        $('#research_design-citations').empty();
+        $('#background-section').hide();
+        $('#procedure-section').hide();
+        $('#research_design-section').hide();
+        
+        // Reset RQ display
+        $('#rq-display').hide();
+        $('#rq-content').empty();
+        $('#rq-warnings').empty().hide();
+        $('#expand-buttons').hide();
+        
+        // Hide panels
+        $('#ia-sections-panel').hide();
+        $('#tab-ia-section').hide();
+        $('#generate-rq-container').hide();
+        
+        // Reset inputs
+        $('#chat-input').val('').attr('placeholder', 'Enter your research goal...');
+        $('#subject-select').val('');
+        
+        // Reset tabs / views
+        switchTab('research-brief');
+        
+        // Show welcome / placeholder
+        $('#welcome-message').show();
+        $('#proposal-content').hide().empty();
+        $('#edit-button').hide();
+        $('#main-idea').html('<p style="color: #94a3b8; text-align: center; padding: 20px;">Enter a new research goal to begin.</p>');
+
+        // Reset tree & review safely
+        if (window.updateTreeVisualization) updateTreeVisualization({ nodes: [] });
+        if (window.reviewUI && reviewUI.reset) reviewUI.reset();
+        
+        // Reset global variables
+        if (typeof window.main_idea !== 'undefined') {
+            window.main_idea = '';
+        }
+        
+        // Reset score display
+        if (typeof updateScoreDisplay === 'function') {
+            updateScoreDisplay(0);
+        }
+        
+        // Show success message
+        const chatArea = $("#chat-box");
+        const resetMessage = $('<div></div>')
+            .attr('data-sender', 'system')
+            .css({
+                'padding': '10px 15px',
+                'background': '#f0f9ff',
+                'border-left': '4px solid #3b82f6',
+                'border-radius': '4px',
+                'margin': '10px 0',
+                'color': '#1e40af'
+            })
+            .text('✅ Ready for a new research project! Enter your research goal to begin.')
+            .hide();
+        chatArea.append(resetMessage);
+        resetMessage.slideDown();
+    }).fail(function(xhr) {
+        console.error('Error resetting application:', xhr);
+        alert('Error resetting application. Please refresh the page.');
+    });
+}
+window.startNewResearch = startNewResearch;
 
 // Add helper functions for automated button clicks
 function triggerRetrieveKnowledge() {

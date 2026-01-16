@@ -609,6 +609,10 @@
         <div class="chat">
             <div class="top-bar">
                 <div class="top-bar-buttons">
+                    <button class="new-research-btn" onclick="startNewResearch(); return false;" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                        <span>🔄</span>
+                        <span>New Research</span>
+                    </button>
                     <button class="auto-generate" onclick="event.preventDefault(); toggleAutoGenerate(); return false;">
                         <img src="{{ url_for('static', filename='icons/auto.svg') }}" alt="Auto">
                         <span>Automate Generation</span>
@@ -706,7 +710,6 @@
                         <div id="background-actions" class="section-buttons" style="display: flex; gap: 8px; margin-top: 10px;">
                             <button class="ia-section-action-btn secondary" data-section="background" onclick="editApprovedSection('background')">Edit</button>
                             <button class="ia-section-action-btn secondary" data-section="background" onclick="provideSectionFeedback('background')">Feedback</button>
-                            <button class="ia-section-action-btn secondary" data-section="background" onclick="retrieveKnowledgeForSection('background')">Retrieve Knowledge</button>
                         </div>
                     </div>
                     
@@ -717,7 +720,6 @@
                         <div id="procedure-actions" class="section-buttons" style="display: flex; gap: 8px; margin-top: 10px;">
                             <button class="ia-section-action-btn secondary" data-section="procedure" onclick="editApprovedSection('procedure')">Edit</button>
                             <button class="ia-section-action-btn secondary" data-section="procedure" onclick="provideSectionFeedback('procedure')">Feedback</button>
-                            <button class="ia-section-action-btn secondary" data-section="procedure" onclick="retrieveKnowledgeForSection('procedure')">Retrieve Knowledge</button>
                         </div>
                     </div>
                     
@@ -728,7 +730,6 @@
                         <div id="research_design-actions" class="section-buttons" style="display: flex; gap: 8px; margin-top: 10px;">
                             <button class="ia-section-action-btn secondary" data-section="research_design" onclick="editApprovedSection('research_design')">Edit</button>
                             <button class="ia-section-action-btn secondary" data-section="research_design" onclick="provideSectionFeedback('research_design')">Feedback</button>
-                            <button class="ia-section-action-btn secondary" data-section="research_design" onclick="retrieveKnowledgeForSection('research_design')">Retrieve Knowledge</button>
                         </div>
                     </div>
                 </div>

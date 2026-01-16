@@ -442,6 +442,23 @@ def subject():
     return jsonify({"subject": selected_subject})
 
 
+@app.route("/api/reset", methods=["POST"])
+def reset_all():
+    """Reset all application state for a new research project."""
+    global main_idea, current_root, current_node, chat_messages, selected_subject, retrieval_results
+    
+    # Reset all global state
+    main_idea = ""
+    current_root = None
+    current_node = None
+    chat_messages = []
+    selected_subject = None
+    retrieval_results = {}
+    
+    logger.info("Application state reset - ready for new research project")
+    return jsonify({"success": True})
+
+
 @app.route("/api/chat", methods=["GET", "POST"])
 def chat():
     global main_idea, current_root, current_node, current_state, exploration_in_progress, selected_subject
@@ -1709,6 +1726,62 @@ def mcts_best_child(node):
     
     return best_child
 
+
+def best_node_by_score(root, min_safety=6.0, min_analysis=6.0):
+    """Return the best reviewed node in the entire subtree by average_score.
+    
+    This is used for final "Best Idea" selection after MCTS automation completes.
+    Separate from mcts_best_child() which uses MCTS value for exploration.
+    
+    Args:
+        root: Root node of MCTS tree
+        min_safety: Minimum safety_practicality score (default 6.0)
+        min_analysis: Minimum data_analysis_viability score (default 6.0)
+    
+    Returns:
+        Best node with highest average_score, or None if no viable node found
+    """
+    if root is None:
+        return None
+    
+    best = None
+    best_score = float("-inf")
+    
+    # Use iterative DFS to traverse entire tree
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        # Add children to stack for traversal
+        stack.extend(getattr(node, "children", []) or [])
+        
+        # Skip nodes without average_score (unreviewed)
+        avg = getattr(node.state, "average_score", None)
+        if avg is None or avg == 0:
+            continue
+        
+        # Apply viability gates (check review_scores if available)
+        scores = getattr(node.state, "review_scores", {}) or {}
+        safety = scores.get("safety_practicality", 10)  # Default high if not present
+        analysis = scores.get("data_analysis_viability", 10)  # Default high if not present
+        
+        # Skip nodes that don't meet viability thresholds
+        if safety < min_safety or analysis < min_analysis:
+            logger.info(f"Skipping node {node.id}: safety={safety}, analysis={analysis}")
+            continue
+        
+        # Track best node
+        if avg > best_score:
+            best_score = avg
+            best = node
+    
+    if best:
+        logger.info(f"Best node selected: {best.id} with average_score={best_score}")
+    else:
+        logger.warning("No viable reviewed node found in tree")
+    
+    return best
+
+
 # Helper function to avoid code duplication
 def step_action(action):
     """Execute a step with a specific action and return the result"""
@@ -1803,21 +1876,26 @@ def get_tree():
 
 @app.route("/api/get_best_child", methods=["POST"])
 def get_best_child():
-    """Get the best child node from the MCTS tree"""
-    global current_root, current_node
+    """Get the best node from the MCTS tree by average_score and navigate to it.
+    
+    This searches the entire tree (not just immediate children) for the node
+    with the highest average_score that meets viability thresholds.
+    """
+    global current_root, current_node, main_idea
     
     try:
         if current_root is None:
             return jsonify({"error": "No MCTS tree available"}), 400
         
-        # Use the existing mcts_best_child function
-        best_child = mcts_best_child(current_root)
+        # Use best_node_by_score to search entire tree by average_score
+        best = best_node_by_score(current_root)
         
-        if best_child is None:
-            # No best child found, return current node
+        if best is None:
+            # No viable reviewed node found, fall back to current node
             if current_node is None:
-                return jsonify({"error": "No node available"}), 400
+                return jsonify({"error": "No reviewed viable idea found yet"}), 404
             
+            logger.warning("No viable best node found, returning current node")
             return jsonify({
                 "idea": current_node.state.current_idea,
                 "average_score": getattr(current_node.state, "average_score", 0.0),
@@ -1827,18 +1905,24 @@ def get_best_child():
                 "feedback": get_latest_feedback(getattr(current_node.state, "feedback", {}))
             })
         
-        # Return best child's data
+        # Navigate to the best node (update current_node and main_idea)
+        current_node = best
+        main_idea = best.state.current_idea
+        
+        logger.info(f"Navigated to best node: {best.id} with score {getattr(best.state, 'average_score', 0.0)}")
+        
+        # Return best node's data
         return jsonify({
-            "idea": best_child.state.current_idea,
-            "average_score": getattr(best_child.state, "average_score", 0.0),
-            "review_scores": getattr(best_child.state, "review_scores", {}),
-            "feedback": get_latest_feedback(getattr(best_child.state, "feedback", {})),
-            "nodeId": best_child.id,
-            "depth": best_child.state.depth
+            "idea": best.state.current_idea,
+            "average_score": getattr(best.state, "average_score", 0.0),
+            "review_scores": getattr(best.state, "review_scores", {}),
+            "feedback": get_latest_feedback(getattr(best.state, "feedback", {})),
+            "nodeId": best.id,
+            "depth": best.state.depth
         })
     
     except Exception as e:
-        error_message = f"Error getting best child: {str(e)}"
+        error_message = f"Error getting best node: {str(e)}"
         print(error_message)
         traceback.print_exc()
         return jsonify({"error": error_message}), 500
