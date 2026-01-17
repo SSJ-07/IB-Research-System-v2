@@ -188,11 +188,29 @@ $(document).ready(function () {
     // Load saved subject on page load
     loadSubject();
     
-    // Add Enter key handler for chat input
-    $('#chat-input').on('keypress', function(e) {
+    // Auto-resize textarea function
+    function autoResizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        const maxHeight = 128; // 8rem = 128px
+        const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+        textarea.style.height = newHeight + 'px';
+    }
+    
+    // Add input event for auto-resize
+    $('#chat-input').on('input', function() {
+        autoResizeTextarea(this);
+    });
+    
+    // Add Enter key handler for chat input (Enter sends, Shift+Enter creates new line)
+    $('#chat-input').on('keydown', function(e) {
         if (e.which === 13 || e.keyCode === 13) {
-            e.preventDefault();
-            sendMessage();
+            if (!e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+                // Reset height after sending
+                this.style.height = 'auto';
+            }
+            // If Shift+Enter, allow default behavior (new line)
         }
     });
 
@@ -1200,7 +1218,7 @@ function handleRQApproval(rq) {
             'border-radius': '6px',
             'margin': '10px 0',
             'color': '#166534',
-            'font-size': '0.9rem'
+            'font-size': '13px'
         })
         .html('Research Question approved and saved.')
         .hide();
@@ -1565,7 +1583,7 @@ function handleSectionApproval(section, content, citations) {
             'border-radius': '6px',
             'margin': '10px 0',
             'color': '#166534',
-            'font-size': '0.9rem'
+            'font-size': '13px'
         })
         .html(`${sectionName} approved and saved.`)
         .hide();
@@ -3805,13 +3823,14 @@ function startNewResearch() {
             .attr('data-sender', 'system')
             .css({
                 'padding': '10px 15px',
-                'background': '#f0f9ff',
-                'border-left': '4px solid #3b82f6',
-                'border-radius': '4px',
+                'background': '#f9fafb',
+                'border-left': '3px solid #6b7280',
+                'border-radius': '6px',
                 'margin': '10px 0',
-                'color': '#1e40af'
+                'color': '#6b7280',
+                'font-size': '13px'
             })
-            .text('✅ Ready for a new research project! Enter your research goal to begin.')
+            .text('Ready for a new research project! Enter your research goal to begin.')
             .hide();
         chatArea.append(resetMessage);
         resetMessage.slideDown();
