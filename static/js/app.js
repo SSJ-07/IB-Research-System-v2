@@ -1294,7 +1294,7 @@ function handleRQDecline(rq) {
             'border-radius': '6px',
             'margin': '10px 0',
             'color': '#991b1b',
-            'font-size': '0.9rem'
+            'font-size': '13px'
         })
         .html('Research Question declined. You can generate a new one.')
         .hide();
@@ -1323,7 +1323,7 @@ function showRQFeedbackModal(rq, warnings) {
                 ` : ''}
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600;">Your Feedback:</label>
-                    <textarea id="rq-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit;" placeholder="Describe what should be changed or improved..."></textarea>
+                    <textarea id="rq-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; outline: none;" placeholder="Describe what should be changed or improved..."></textarea>
                 </div>
                 <div class="ia-section-actions" style="justify-content: flex-end;">
                     <button class="ia-section-action-btn secondary rq-feedback-cancel">
@@ -1685,7 +1685,7 @@ function handleSectionDecline(section) {
             'border-radius': '6px',
             'margin': '10px 0',
             'color': '#991b1b',
-            'font-size': '0.9rem'
+            'font-size': '13px'
         })
         .html(`${sectionName} declined.`)
         .hide();
@@ -1709,7 +1709,7 @@ function showSectionFeedbackModal(section, content, citations) {
                 <h2 style="margin-top: 0; margin-bottom: 20px; color: #334155; font-size: 1.1rem; font-weight: 600;">Provide Feedback for ${sectionName}</h2>
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #475569; font-size: 0.9rem;">Your Feedback:</label>
-                    <textarea id="section-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; resize: vertical;" placeholder="Describe what should be changed or improved..."></textarea>
+                    <textarea id="section-feedback-text" rows="6" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem; font-family: inherit; resize: vertical; outline: none;" placeholder="Describe what should be changed or improved..."></textarea>
                 </div>
                 <div class="ia-section-actions" style="justify-content: flex-end;">
                     <button class="ia-section-action-btn secondary section-feedback-cancel">Cancel</button>
@@ -1948,7 +1948,7 @@ function provideSectionFeedback(section) {
                 <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 1.1rem;">Feedback for ${sectionName}</h3>
                 <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">What would you like to improve?</p>
                 <textarea id="section-feedback-input" placeholder="e.g., 'Add more detail about safety precautions' or 'Include uncertainty calculations'" 
-                    style="width: 100%; height: 100px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; resize: vertical; box-sizing: border-box;"></textarea>
+                    style="width: 100%; height: 100px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; resize: vertical; box-sizing: border-box; outline: none;"></textarea>
                 <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end;">
                     <button class="ia-section-action-btn secondary" onclick="$('#section-feedback-modal').remove();">Cancel</button>
                     <button class="ia-section-action-btn primary" onclick="submitSectionFeedbackFromPanel('${section}');">Submit Feedback</button>

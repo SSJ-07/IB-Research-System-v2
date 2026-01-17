@@ -217,34 +217,28 @@ html {
 }
 
 .answer .citation {
-    color: #4b5563;
+    color: #2563eb;
     text-decoration: underline;
     font-size: 12px;
     margin-right: 0.5rem;
 }
 
 .answer .citation:hover {
-    color: #1f2937;
+    color: #1e40af;
 }
 
 .sidebar-buttons {
     display: flex;
     gap: 0.75rem;
-    padding-top: 1rem;
-    margin-top: auto;
-    margin: 0;
+    align-items: center;
     padding: 0.75rem 1rem;
     background-color: #ffffff;
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
     z-index: 10;
     margin-top: auto !important;
     position: sticky;
-    bottom: 0;
-    background-color: #ffffff;
-    padding: 0.75rem 1rem;
+    bottom: -10px;
     flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .sidebar-button {
@@ -290,6 +284,7 @@ html {
     border: 1px solid #e5e7eb;
     background: #f9fafb;
     box-sizing: border-box;
+    flex-shrink: 1;
 }
 
 .sidebar-search input {
@@ -302,6 +297,7 @@ html {
     color: #374151;
     background-color: transparent;
     min-width: 0;
+    box-sizing: border-box;
 }
 
 .sidebar-search input::placeholder {
@@ -332,25 +328,53 @@ html {
     opacity: 0.6;
 }
 
-/* PDF/Attach button alignment fix */
+/* PDF/Attach button - completely redefined */
+.sidebar-buttons label[for="file-upload"],
+.sidebar-buttons .pdf-button,
 .sidebar-button.pdf-button {
-    width: 2rem;
-    height: 2rem;
-    min-height: 2rem;
-    max-height: 2rem;
-    padding: 0;
-    flex: none;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    min-height: 2rem !important;
+    max-width: 2rem !important;
+    max-height: 2rem !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex: none !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    border-radius: 10px !important;
+    background-color: #e5e7eb !important;
+    border: 1px solid #e5e7eb !important;
+    color: inherit !important;
+    font-size: inherit !important;
+    font-weight: normal !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    position: static !important;
+    transform: none !important;
+    transition: background-color 0.2s ease !important;
 }
 
+.sidebar-buttons label[for="file-upload"]:hover,
+.sidebar-buttons .pdf-button:hover,
+.sidebar-button.pdf-button:hover {
+    background-color: #d1d5db !important;
+    border-color: #d1d5db !important;
+    transform: none !important;
+}
+
+.sidebar-buttons label[for="file-upload"] img,
+.sidebar-buttons .pdf-button img,
 .sidebar-button.pdf-button img {
-    width: 16px;
-    height: 16px;
-    opacity: 0.6;
+    width: 16px !important;
+    height: 16px !important;
+    opacity: 0.6 !important;
+    display: block !important;
+    pointer-events: none !important;
 }
 
 /* Chat area styling */
@@ -638,7 +662,7 @@ html {
 /* Chat input area */
 .chat-input {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 8px;
     padding: 12px;
     background-color: #ffffff;
@@ -662,6 +686,7 @@ html {
     resize: none;
     overflow-y: hidden;
     transition: border-color 0.2s ease;
+    box-sizing: border-box;
 }
 
 .chat-input textarea:focus {
@@ -672,6 +697,8 @@ html {
 .chat-input button {
     height: 2rem;
     width: 2rem;
+    min-height: 2rem;
+    min-width: 2rem;
     padding: 0;
     background-color: #e5e7eb;
     color: #ffffff;
@@ -682,6 +709,8 @@ html {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .chat-input button:hover {
@@ -1231,148 +1260,148 @@ html {
 
 /* Review highlight colors - distinct colors for each aspect */
 .review-highlight[data-aspect="lack_of_novelty"] {
-    background-color: rgba(239, 68, 68, 0.25);
+    background-color: rgba(239, 68, 68, 0.25) !important;
 }
 
 .review-highlight[data-aspect="assumptions"] {
-    background-color: rgba(249, 115, 22, 0.25);
+    background-color: rgba(249, 115, 22, 0.25) !important;
 }
 
 .review-highlight[data-aspect="vagueness"] {
-    background-color: rgba(234, 179, 8, 0.25);
+    background-color: rgba(234, 179, 8, 0.25) !important;
 }
 
 .review-highlight[data-aspect="feasibility_and_practicality"] {
-    background-color: rgba(34, 197, 94, 0.25);
+    background-color: rgba(34, 197, 94, 0.25) !important;
 }
 
 .review-highlight[data-aspect="overgeneralization"] {
-    background-color: rgba(59, 130, 246, 0.25);
+    background-color: rgba(59, 130, 246, 0.25) !important;
 }
 
 .review-highlight[data-aspect="overstatement"] {
-    background-color: rgba(168, 85, 247, 0.25);
+    background-color: rgba(168, 85, 247, 0.25) !important;
 }
 
 .review-highlight[data-aspect="evaluation_and_validation_issues"] {
-    background-color: rgba(20, 184, 166, 0.25);
+    background-color: rgba(20, 184, 166, 0.25) !important;
 }
 
 .review-highlight[data-aspect="justification_for_methods"] {
-    background-color: rgba(99, 102, 241, 0.25);
+    background-color: rgba(99, 102, 241, 0.25) !important;
 }
 
 .review-highlight[data-aspect="reproducibility"] {
-    background-color: rgba(6, 182, 212, 0.25);
+    background-color: rgba(6, 182, 212, 0.25) !important;
 }
 
 .review-highlight[data-aspect="contradictory_statements"] {
-    background-color: rgba(244, 63, 94, 0.25);
+    background-color: rgba(244, 63, 94, 0.25) !important;
 }
 
 .review-highlight[data-aspect="alignment"] {
-    background-color: rgba(16, 185, 129, 0.25);
+    background-color: rgba(16, 185, 129, 0.25) !important;
 }
 
 .review-highlight[data-aspect="ethical_and_social_considerations"] {
-    background-color: rgba(245, 158, 11, 0.25);
+    background-color: rgba(245, 158, 11, 0.25) !important;
 }
 
 .review-highlight[data-aspect="robustness"] {
-    background-color: rgba(14, 165, 233, 0.25);
+    background-color: rgba(14, 165, 233, 0.25) !important;
 }
 
 .review-highlight[data-aspect="novelty"] {
-    background-color: rgba(34, 197, 94, 0.25);
+    background-color: rgba(34, 197, 94, 0.25) !important;
 }
 
 .review-highlight[data-aspect="feasibility"] {
-    background-color: rgba(59, 130, 246, 0.25);
+    background-color: rgba(59, 130, 246, 0.25) !important;
 }
 
 .review-highlight[data-aspect="clarity"] {
-    background-color: rgba(234, 179, 8, 0.25);
+    background-color: rgba(234, 179, 8, 0.25) !important;
 }
 
 .review-highlight[data-aspect="impact"] {
-    background-color: rgba(168, 85, 247, 0.25);
+    background-color: rgba(168, 85, 247, 0.25) !important;
 }
 
 .review-highlight[data-aspect="methodology"] {
-    background-color: rgba(20, 184, 166, 0.25);
+    background-color: rgba(20, 184, 166, 0.25) !important;
 }
 
 /* Hover states - darker versions of each color */
 .review-highlight[data-aspect="lack_of_novelty"]:hover {
-    background-color: rgba(239, 68, 68, 0.45);
+    background-color: rgba(239, 68, 68, 0.45) !important;
 }
 
 .review-highlight[data-aspect="assumptions"]:hover {
-    background-color: rgba(249, 115, 22, 0.45);
+    background-color: rgba(249, 115, 22, 0.45) !important;
 }
 
 .review-highlight[data-aspect="vagueness"]:hover {
-    background-color: rgba(234, 179, 8, 0.45);
+    background-color: rgba(234, 179, 8, 0.45) !important;
 }
 
 .review-highlight[data-aspect="feasibility_and_practicality"]:hover {
-    background-color: rgba(34, 197, 94, 0.45);
+    background-color: rgba(34, 197, 94, 0.45) !important;
 }
 
 .review-highlight[data-aspect="overgeneralization"]:hover {
-    background-color: rgba(59, 130, 246, 0.45);
+    background-color: rgba(59, 130, 246, 0.45) !important;
 }
 
 .review-highlight[data-aspect="overstatement"]:hover {
-    background-color: rgba(168, 85, 247, 0.45);
+    background-color: rgba(168, 85, 247, 0.45) !important;
 }
 
 .review-highlight[data-aspect="evaluation_and_validation_issues"]:hover {
-    background-color: rgba(20, 184, 166, 0.45);
+    background-color: rgba(20, 184, 166, 0.45) !important;
 }
 
 .review-highlight[data-aspect="justification_for_methods"]:hover {
-    background-color: rgba(99, 102, 241, 0.45);
+    background-color: rgba(99, 102, 241, 0.45) !important;
 }
 
 .review-highlight[data-aspect="reproducibility"]:hover {
-    background-color: rgba(6, 182, 212, 0.45);
+    background-color: rgba(6, 182, 212, 0.45) !important;
 }
 
 .review-highlight[data-aspect="contradictory_statements"]:hover {
-    background-color: rgba(244, 63, 94, 0.45);
+    background-color: rgba(244, 63, 94, 0.45) !important;
 }
 
 .review-highlight[data-aspect="alignment"]:hover {
-    background-color: rgba(16, 185, 129, 0.45);
+    background-color: rgba(16, 185, 129, 0.45) !important;
 }
 
 .review-highlight[data-aspect="ethical_and_social_considerations"]:hover {
-    background-color: rgba(245, 158, 11, 0.45);
+    background-color: rgba(245, 158, 11, 0.45) !important;
 }
 
 .review-highlight[data-aspect="robustness"]:hover {
-    background-color: rgba(14, 165, 233, 0.45);
+    background-color: rgba(14, 165, 233, 0.45) !important;
 }
 
 .review-highlight[data-aspect="novelty"]:hover {
-    background-color: rgba(34, 197, 94, 0.45);
+    background-color: rgba(34, 197, 94, 0.45) !important;
 }
 
 .review-highlight[data-aspect="feasibility"]:hover {
-    background-color: rgba(59, 130, 246, 0.45);
+    background-color: rgba(59, 130, 246, 0.45) !important;
 }
 
 .review-highlight[data-aspect="clarity"]:hover {
-    background-color: rgba(234, 179, 8, 0.45);
+    background-color: rgba(234, 179, 8, 0.45) !important;
 }
 
 .review-highlight[data-aspect="impact"]:hover {
-    background-color: rgba(168, 85, 247, 0.45);
+    background-color: rgba(168, 85, 247, 0.45) !important;
 }
 
 .review-highlight[data-aspect="methodology"]:hover {
-    background-color: rgba(20, 184, 166, 0.45);
+    background-color: rgba(20, 184, 166, 0.45) !important;
 }
 
 /* Fallback hover for any review-highlight without specific aspect */
@@ -2267,7 +2296,7 @@ h4 {
 
 .citation-link {
     background-color: transparent;
-    color: #4b5563;
+    color: #2563eb;
     text-decoration: underline;
     padding: 2px 0;
     border-radius: 0;
@@ -2281,7 +2310,7 @@ h4 {
 }
 
 .citation-link:hover {
-    color: #1f2937;
+    color: #1e40af;
 }
 
 .citation-details {
@@ -2525,7 +2554,7 @@ h4 {
 }
 
 .citation-link a {
-    color: #4b5563;
+    color: #2563eb;
     text-decoration: underline;
     flex: 1;
     word-break: break-word;
@@ -2534,7 +2563,7 @@ h4 {
 }
 
 .citation-link a:hover {
-    color: #1f2937;
+    color: #1e40af;
 }
 
 hr {
@@ -2562,7 +2591,8 @@ hr {
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
     display: inline;
-    background-color: rgba(156, 163, 175, 0.25) !important;
+    /* Default background color - overridden by specific aspect selectors with !important */
+    background-color: rgba(156, 163, 175, 0.25);
 }
 
 /* Accepted state */
@@ -3052,6 +3082,14 @@ hr {
 .modal-content textarea:focus,
 #text-editor-content:focus {
     outline: none;
+    border-color: #9ca3af;
+}
+
+/* Remove blue outline from all feedback textareas */
+#rq-feedback-text:focus,
+#section-feedback-text:focus,
+#section-feedback-input:focus {
+    outline: none !important;
     border-color: #9ca3af;
 }
 
