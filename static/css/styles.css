@@ -1215,6 +1215,18 @@ html {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.brief-action-btn img {
+    width: 14px;
+    height: 14px;
+    opacity: 0.6;
+    filter: brightness(0) saturate(100%) invert(47%) sepia(4%) saturate(458%) hue-rotate(186deg) brightness(95%) contrast(88%);
+    vertical-align: middle;
 }
 
 .brief-action-btn:hover {
@@ -1227,6 +1239,12 @@ html {
     background-color: #374151;
     color: white;
     border-color: #374151;
+}
+
+.brief-action-btn:active img,
+.brief-action-btn.active img {
+    filter: brightness(0) invert(1);
+    opacity: 1;
 }
 
 .brief-action-btn:focus {

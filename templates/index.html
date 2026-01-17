@@ -561,8 +561,14 @@
             <div class="top-bar">
                 <div class="top-bar-buttons">
                     <button class="start-new-idea-btn" onclick="startNewResearch(); return false;">New Idea</button>
-                    <button class="auto-generate" onclick="event.preventDefault(); toggleAutoGenerate(); return false;">Automate</button>
-                    <button onclick="toggleTree()">Tree</button>
+                    <button class="auto-generate" onclick="event.preventDefault(); toggleAutoGenerate(); return false;">
+                        <img src="{{ url_for('static', filename='icons/auto.svg') }}" alt="Auto" width="14" height="14">
+                        Automate Generation
+                    </button>
+                    <button onclick="toggleTree()">
+                        <img src="{{ url_for('static', filename='icons/tree.svg') }}" alt="Tree" width="14" height="14">
+                        Tree
+                    </button>
                 </div>
             </div>
             <div id="main-content">
@@ -710,7 +716,10 @@
             </div>
             <div class="research-brief-buttons" style="display: none;">
                 <button class="brief-action-btn generate-review">Generate Review</button>
-                <button class="brief-action-btn retrieve-knowledge">Retrieve Knowledge</button>
+                <button class="brief-action-btn retrieve-knowledge">
+                    <img src="{{ url_for('static', filename='icons/search.svg') }}" alt="Search" width="14" height="14">
+                    Retrieve Knowledge
+                </button>
                 <button class="brief-action-btn refresh-button">Refresh</button>
             </div>
         </div>
