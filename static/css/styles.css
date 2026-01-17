@@ -347,8 +347,8 @@ html {
     flex-shrink: 0 !important;
     flex-grow: 0 !important;
     border-radius: 10px !important;
-    background-color: #e5e7eb !important;
-    border: 1px solid #e5e7eb !important;
+    background-color: #f1f2f5 !important;
+    border: 1px solid #f1f2f5 !important;
     color: inherit !important;
     font-size: inherit !important;
     font-weight: normal !important;
@@ -362,8 +362,8 @@ html {
 .sidebar-buttons label[for="file-upload"]:hover,
 .sidebar-buttons .pdf-button:hover,
 .sidebar-button.pdf-button:hover {
-    background-color: #d1d5db !important;
-    border-color: #d1d5db !important;
+    background-color: #e1e2e8 !important;
+    border-color: #e1e2e8 !important;
     transform: none !important;
 }
 
