@@ -510,7 +510,8 @@ def chat():
         
         try:
             # First message: Initialize MCTS with research goal
-            if current_root is None:
+            # Also treat as first message if current_root exists but current_node is None (after reset)
+            if current_root is None or (current_root is not None and current_node is None):
                 # Store initial research goal in state
                 chat_messages.append(
                     {"role": "system", "content": "Generating initial idea..."}
@@ -584,6 +585,11 @@ def chat():
                         first_idea_state.reward = 0.0
                 
                 # Add the first generated idea as a child of the root node
+                if current_root is None:
+                    error_message = "Error: Root node was not created properly. Please try again."
+                    chat_messages.append({"role": "system", "content": error_message})
+                    return jsonify({"error": error_message}), 500
+                
                 first_idea_node = current_root.add_child(first_idea_state, "generate")
                 
                 # Set current node to the first idea node
@@ -593,6 +599,18 @@ def chat():
                 
             # Subsequent messages: Treat as direct feedback to improve the current idea
             else:
+                # Check if current_node exists, if not, we need to recreate it from current_root
+                if current_node is None:
+                    # If current_root exists but current_node is None, find the first child or recreate
+                    if current_root and current_root.children:
+                        # Use the first child if available
+                        current_node = current_root.children[0]
+                    else:
+                        # This shouldn't happen, but handle it gracefully
+                        error_message = "Error: Current node is missing. Please start a new research project."
+                        chat_messages.append({"role": "system", "content": error_message})
+                        return jsonify({"error": error_message}), 400
+                
                 # Add system message indicating feedback processing
                 chat_messages.append(
                     {"role": "system", "content": "Processing your feedback to improve the research idea..."}
