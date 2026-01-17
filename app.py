@@ -3283,12 +3283,9 @@ def expand_research_design():
             return jsonify({"error": "No current node found"}), 400
         
         retrieved_knowledge = ""
-        if auto_retrieve:
-            retrieved_knowledge, citations_list = retrieve_section_knowledge("research_design", ia_topic, research_question)
-        else:
-            query = generate_citation_query("research_design", ia_topic, research_question)
-            citations_list = retrieve_citations_for_section(query)
-        citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list])
+        # Research Design doesn't need citations
+        citations_list = []
+        citations_str = ""
         
         # Get research brief content
         research_brief = main_idea or (current_node.state.content if hasattr(current_node.state, 'content') else "")
@@ -3320,7 +3317,10 @@ def expand_research_design():
         if not current_node.state.expanded_sections:
             current_node.state.expanded_sections = {}
         current_node.state.expanded_sections["research_design"] = content
-        current_node.state.section_citations["research_design"] = citations_list
+        # Research Design doesn't need citations, so don't store them
+        if not hasattr(current_node.state, 'section_citations'):
+            current_node.state.section_citations = {}
+        current_node.state.section_citations["research_design"] = []
         
         return jsonify({
             "content": content,
@@ -3374,6 +3374,10 @@ def retrieve_citations():
     ia_topic = data["ia_topic"]
     research_question = data["research_question"]
     
+    # Research Design doesn't need citations
+    if section == "research_design":
+        return jsonify({"citations": []})
+    
     try:
         query = generate_citation_query(section, ia_topic, research_question)
         citations_list = retrieve_citations_for_section(query)
@@ -3406,55 +3410,62 @@ def improve_section_with_knowledge():
         research_question = current_node.state.research_question if hasattr(current_node.state, 'research_question') else ""
     
     try:
-        # First retrieve relevant papers using ScholarQA
-        query = generate_citation_query(section, ia_topic, research_question)
-        # Add user's additional context to improve search
-        if additional_context:
-            query = f"{query} {additional_context}"
-        
-        # Use the full ScholarQA to get paper content, not just citations
-        result = scholar_qa.answer_query(query)
-        
-        # Format retrieved knowledge
-        retrieved_content = []
-        citations_list = []
-        
-        sections = result.get("sections", [])
-        for sec in sections:
-            section_text = f"## {sec.get('title', 'Untitled')}\n\n"
-            section_text += f"{sec.get('text', '')}\n\n"
-            retrieved_content.append(section_text)
-            
-            # Extract citations
-            for citation in sec.get("citations", []):
-                if isinstance(citation, dict):
-                    paper = citation.get("paper", {})
-                    citation_id = citation.get("id", "")
-                    
-                    # Validate paper metadata to avoid N/A hallucinations
-                    author = normalize_author(paper.get("authors"))
-                    year = paper.get("year")
-                    
-                    if not author or author in ("N/A", "Unknown") or not year or year == "N/A":
-                        continue
-                        
-                    paper_url = extract_paper_url(citation, paper)
-                    
-                    citations_list.append({
-                        "id": citation_id,
-                        "author": author,
-                        "year": year,
-                        "title": paper.get("title", "Untitled"),
-                        "corpus_id": paper.get("corpus_id", ""),
-                        "citation_count": paper.get("citation_count", 0),
-                        "url": paper_url
-                    })
-        
-        formatted_knowledge = "\n\n".join(retrieved_content)
-        if section == "background":
-            citations_str = "\n".join([format_citation_for_prompt_numbered(c, i + 1) for i, c in enumerate(citations_list[:10])])
+        # Research Design doesn't need citations
+        if section == "research_design":
+            retrieved_content = []
+            citations_list = []
+            formatted_knowledge = ""
+            citations_str = ""
         else:
-            citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list[:10]])
+            # First retrieve relevant papers using ScholarQA
+            query = generate_citation_query(section, ia_topic, research_question)
+            # Add user's additional context to improve search
+            if additional_context:
+                query = f"{query} {additional_context}"
+            
+            # Use the full ScholarQA to get paper content, not just citations
+            result = scholar_qa.answer_query(query)
+            
+            # Format retrieved knowledge
+            retrieved_content = []
+            citations_list = []
+            
+            sections = result.get("sections", [])
+            for sec in sections:
+                section_text = f"## {sec.get('title', 'Untitled')}\n\n"
+                section_text += f"{sec.get('text', '')}\n\n"
+                retrieved_content.append(section_text)
+                
+                # Extract citations
+                for citation in sec.get("citations", []):
+                    if isinstance(citation, dict):
+                        paper = citation.get("paper", {})
+                        citation_id = citation.get("id", "")
+                        
+                        # Validate paper metadata to avoid N/A hallucinations
+                        author = normalize_author(paper.get("authors"))
+                        year = paper.get("year")
+                        
+                        if not author or author in ("N/A", "Unknown") or not year or year == "N/A":
+                            continue
+                            
+                        paper_url = extract_paper_url(citation, paper)
+                        
+                        citations_list.append({
+                            "id": citation_id,
+                            "author": author,
+                            "year": year,
+                            "title": paper.get("title", "Untitled"),
+                            "corpus_id": paper.get("corpus_id", ""),
+                            "citation_count": paper.get("citation_count", 0),
+                            "url": paper_url
+                        })
+            
+            formatted_knowledge = "\n\n".join(retrieved_content)
+            if section == "background":
+                citations_str = "\n".join([format_citation_for_prompt_numbered(c, i + 1) for i, c in enumerate(citations_list[:10])])
+            else:
+                citations_str = "\n".join([format_citation_for_prompt(c) for c in citations_list[:10]])
         
         # Get research brief content
         research_brief = main_idea or (current_node.state.content if current_node and hasattr(current_node.state, 'content') else "")
@@ -3489,7 +3500,15 @@ def improve_section_with_knowledge():
             current_node.state.expanded_sections = {}
         if current_node:
             current_node.state.expanded_sections[section] = content
-            current_node.state.section_citations[section] = citations_list[:10]
+            # Research Design doesn't need citations
+            if section != "research_design":
+                if not hasattr(current_node.state, 'section_citations'):
+                    current_node.state.section_citations = {}
+                current_node.state.section_citations[section] = citations_list[:10]
+            else:
+                if not hasattr(current_node.state, 'section_citations'):
+                    current_node.state.section_citations = {}
+                current_node.state.section_citations[section] = []
         
         return jsonify({
             "content": content,

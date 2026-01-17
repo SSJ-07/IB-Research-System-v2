@@ -1464,9 +1464,9 @@ function displaySectionInChat(section, content, citations) {
     };
     const sectionName = sectionNames[section] || section;
     
-    // Filter out N/A or empty citations just in case
+    // Filter out N/A or empty citations just in case (skip for research_design)
     const numbered = section === 'background';
-    const rendered = renderCitationList(citations, { numbered });
+    const rendered = section !== 'research_design' ? renderCitationList(citations, { numbered }) : { count: 0, html: '', citations: [] };
     const validCitations = rendered.citations;
     
     // Check if content already contains hallucinated template citations and remove them
@@ -1490,7 +1490,7 @@ function displaySectionInChat(section, content, citations) {
             <div class="section-text">
                 ${formatMessage(cleanContent)}
             </div>
-            ${rendered.count > 0 ? `
+            ${section !== 'research_design' && rendered.count > 0 ? `
                 <div class="section-citations-box">
                     <strong>Sources (${rendered.count}):</strong>
                     ${rendered.html}
@@ -1811,8 +1811,8 @@ function displayExpandedSection(section, content, citations) {
         contentElement.html(formatMessage(cleanContent)).show();
     }
     
-    // Display citations
-    if (citationsElement.length) {
+    // Display citations (skip for research_design as it doesn't need citations)
+    if (citationsElement.length && section !== 'research_design') {
         // Filter out N/A or empty citations
         const numbered = section === 'background';
         const rendered = renderCitationList(citations, { numbered });
@@ -1821,6 +1821,9 @@ function displayExpandedSection(section, content, citations) {
         } else {
             citationsElement.hide();
         }
+    } else if (section === 'research_design') {
+        // Always hide citations for research_design
+        citationsElement.hide();
     }
 }
 
@@ -1852,16 +1855,22 @@ function retrieveCitations(section) {
         }),
         success: function(data) {
             // Append new citations
-            const existingCitations = $(`#${section}-citations`).data('citations') || [];
-            const allCitations = [...existingCitations, ...(data.citations || [])];
-            
-            const numbered = section === 'background';
-            const rendered = renderCitationList(allCitations, { numbered });
-            $(`#${section}-citations`).data('citations', rendered.citations);
-            
-            if (rendered.count > 0) {
-                $(`#${section}-citations`).addClass('section-citations-box').html(`<strong>Sources (${rendered.count}):</strong>` + rendered.html).show();
+            // Skip citations for research_design
+            if (section !== 'research_design') {
+                const existingCitations = $(`#${section}-citations`).data('citations') || [];
+                const allCitations = [...existingCitations, ...(data.citations || [])];
+                
+                const numbered = section === 'background';
+                const rendered = renderCitationList(allCitations, { numbered });
+                $(`#${section}-citations`).data('citations', rendered.citations);
+                
+                if (rendered.count > 0) {
+                    $(`#${section}-citations`).addClass('section-citations-box').html(`<strong>Sources (${rendered.count}):</strong>` + rendered.html).show();
+                } else {
+                    $(`#${section}-citations`).hide();
+                }
             } else {
+                // Always hide citations for research_design
                 $(`#${section}-citations`).hide();
             }
         },
