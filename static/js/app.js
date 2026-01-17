@@ -40,10 +40,23 @@ window.sendMessage = function sendMessage() {
         chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
     }
 
-    // Add loading indicator
+    // Hide Generate RQ button during loading/generation
+    $("#generate-rq-container").hide();
+    
+    // Add loading indicator with context-specific message
+    let loadingMessage = 'Processing...';
+    if (isFirstMessage) {
+        loadingMessage = 'Generating initial idea...';
+    } else {
+        const lowerContent = content.toLowerCase();
+        if (lowerContent.includes('feedback') || lowerContent.includes('improve') || lowerContent.includes('refine') || lowerContent.includes('suggest')) {
+            loadingMessage = 'Processing your feedback to improve the research idea...';
+        }
+    }
+    
     var loadingDiv = $('<div></div>')
         .attr('data-sender', 'system')
-        .text('Processing...')
+        .html(createLoadingText(loadingMessage))
         .hide();
     chatArea.append(loadingDiv);
     loadingDiv.slideDown();
@@ -123,6 +136,13 @@ window.sendMessage = function sendMessage() {
     });
 };
 
+// Helper function to create loading text with animated dots
+function createLoadingText(text) {
+    // Replace "..." with animated dots HTML
+    return text.replace('...', '<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>');
+}
+window.createLoadingText = createLoadingText;
+
 // Initialize state object
 const state = {
     currentReviewAspectIndex: 0,
@@ -194,6 +214,13 @@ $(document).ready(function () {
         const maxHeight = 128; // 8rem = 128px
         const newHeight = Math.min(textarea.scrollHeight, maxHeight);
         textarea.style.height = newHeight + 'px';
+        
+        // Show scrollbar only when content exceeds max-height
+        if (textarea.scrollHeight > maxHeight) {
+            textarea.style.overflowY = 'auto';
+        } else {
+            textarea.style.overflowY = 'hidden';
+        }
     }
     
     // Add input event for auto-resize
@@ -957,7 +984,7 @@ window.generateRQ = function generateRQ() {
     }
     
     // Show loading state
-    btn.prop('disabled', true).text('Generating...');
+    btn.prop('disabled', true).html(createLoadingText('Generating...'));
     
     // Load all topics from syllabus if physics subject
     const sendRQRequest = function(topics) {
@@ -1349,7 +1376,7 @@ function submitRQFeedback(rq, feedback, warnings) {
                 const chatArea = $("#chat-box");
                 const feedbackMsg = $('<div></div>')
                     .attr('data-sender', 'system')
-                    .html('<span style="color: #2196f3;">💬 Feedback received. New Research Question generated.</span>')
+                    .html(`<span style="display: flex; align-items: center; gap: 6px; color: #6b7280;"><img src="/static/icons/chat.svg" width="14" height="14" alt="chat" style="opacity: 0.6;"> Feedback received. New Research Question generated.</span>`)
                     .hide();
                 chatArea.append(feedbackMsg);
                 feedbackMsg.slideDown();
@@ -1379,7 +1406,7 @@ function expandSection(section) {
     // Show loading state
     const btn = $(`.expand-section-btn[data-section="${section}"]`);
     const originalText = btn.text();
-    btn.prop('disabled', true).text('Generating...');
+    btn.prop('disabled', true).html(createLoadingText('Generating...'));
     
     $.ajax({
         url: `/api/expand/${section}`,
@@ -1909,7 +1936,7 @@ function submitSectionFeedbackFromPanel(section) {
     const previousContent = $(`#${section}-content`).html();
     
     // Show loading
-    $(`#${section}-content`).html('<div class="loading-state"><div class="spinner"></div><span>Regenerating...</span></div>');
+    $(`#${section}-content`).html('<div class="loading-state"><div class="spinner"></div><span class="loading-text">Regenerating<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span></div>');
     
     $.ajax({
         url: `/api/expand/${section}`,
@@ -2021,7 +2048,7 @@ function toggleAutoGenerate() {
         const chatArea = $("#chat-box");
         const stopMessage = $('<div></div>')
             .attr('data-sender', 'system')
-            .text('🛑 MCTS exploration stopped.')
+            .html(`<span style="display: flex; align-items: center; gap: 6px;"><img src="/static/icons/stop.svg" width="14" height="14" alt="stop" style="opacity: 0.6;"> MCTS exploration stopped.</span>`)
             .hide();
         chatArea.append(stopMessage);
         stopMessage.slideDown();
@@ -2057,7 +2084,7 @@ function toggleAutoGenerate() {
                 
                 const finalMessage = $('<div></div>')
                     .attr('data-sender', 'system')
-                    .text(`🏆 Best idea selected from exploration (Score: ${data.average_score ? data.average_score.toFixed(1) : '?'}/10).`)
+                    .html(`<span style="display: flex; align-items: center; gap: 6px;"><img src="/static/icons/trophy.svg" width="14" height="14" alt="trophy" style="opacity: 0.6;"> Best idea selected from exploration (Score: ${data.average_score ? data.average_score.toFixed(1) : '?'}/10).</span>`)
                     .hide();
                 chatArea.append(finalMessage);
                 finalMessage.slideDown();
@@ -2067,7 +2094,7 @@ function toggleAutoGenerate() {
                 console.error('Error getting best child:', error);
                 const errorMsg = $('<div></div>')
                     .attr('data-sender', 'system')
-                    .text('❌ Error retrieving best result: ' + (xhr.responseJSON?.error || error))
+                    .html(`<span style="display: flex; align-items: center; gap: 6px; color: #dc2626;"><img src="/static/icons/cross.svg" width="14" height="14" alt="error" style="opacity: 0.6;"> Error retrieving best result: ${xhr.responseJSON?.error || error}</span>`)
                     .hide();
                 chatArea.append(errorMsg);
                 errorMsg.slideDown();
@@ -2092,7 +2119,7 @@ function toggleAutoGenerate() {
         const chatArea = $("#chat-box");
         const startMessage = $('<div></div>')
             .attr('data-sender', 'system')
-            .text(`🤖 Starting MCTS exploration (${MCTS_CONFIG.maxIterations} iterations)...`)
+            .html(`<span style="display: flex; align-items: center; gap: 6px;"><img src="/static/icons/robot.svg" width="14" height="14" alt="robot" style="opacity: 0.6;"> ${createLoadingText(`Starting MCTS exploration (${MCTS_CONFIG.maxIterations} iterations)...`)}</span>`)
             .hide();
         chatArea.append(startMessage);
         startMessage.slideDown();
@@ -2134,7 +2161,7 @@ function toggleAutoGenerate() {
                 
                 const completionMessage = $('<div></div>')
                     .attr('data-sender', 'system')
-                    .text(`✅ MCTS exploration ${reason}.`)
+                    .html(`<span style="display: flex; align-items: center; gap: 6px;"><img src="/static/icons/tick.svg" width="14" height="14" alt="success" style="opacity: 0.6;"> MCTS exploration ${reason}.</span>`)
                     .hide();
                 chatArea.append(completionMessage);
                 completionMessage.slideDown();
@@ -2173,7 +2200,7 @@ function toggleAutoGenerate() {
                         
                         const finalMessage = $('<div></div>')
                             .attr('data-sender', 'system')
-                            .text(`🏆 Best idea selected from ${savedIterationCount} iterations (Score: ${data.average_score ? data.average_score.toFixed(1) : '?'}/10).`)
+                            .html(`<span style="display: flex; align-items: center; gap: 6px;"><img src="/static/icons/trophy.svg" width="14" height="14" alt="trophy" style="opacity: 0.6;"> Best idea selected from ${savedIterationCount} iterations (Score: ${data.average_score ? data.average_score.toFixed(1) : '?'}/10).</span>`)
                             .hide();
                         chatArea.append(finalMessage);
                         finalMessage.slideDown();
@@ -2284,7 +2311,7 @@ function toggleAutoGenerate() {
                     const chatArea = $("#chat-box");
                     const errorMsg = $('<div></div>')
                         .attr('data-sender', 'system')
-                        .text('❌ Error in MCTS exploration: ' + (xhr.responseJSON?.error || error))
+                        .html(`<span style="display: flex; align-items: center; gap: 6px; color: #dc2626;"><img src="/static/icons/cross.svg" width="14" height="14" alt="error" style="opacity: 0.6;"> Error in MCTS exploration: ${xhr.responseJSON?.error || error}</span>`)
                         .hide();
                     chatArea.append(errorMsg);
                     errorMsg.slideDown();
@@ -2318,7 +2345,7 @@ function stepAction(action) {
         // Add system message to indicate review generation is starting
         var loadingDiv = $('<div></div>')
             .attr('data-sender', 'system')
-            .text('Generating review...')
+            .html(createLoadingText('Generating review...'))
             .hide();
         chatArea.append(loadingDiv);
         loadingDiv.slideDown();
@@ -2400,7 +2427,7 @@ function toggleTree() {
 
 function loadTree() {
     // Show loading indicator
-    $("#tree-area").html("<div class='loading'>Looking for ideas... 🔍</div>");
+    $("#tree-area").html(`<div class='loading' style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-flex; align-items: center;"><img src="/static/icons/search.svg" width="14" height="14" alt="search" style="opacity: 0.6;"></span> Looking for ideas...</div>`);
     
     // Fetch actual tree data from server
     $.ajax({
@@ -2665,6 +2692,10 @@ function selectNode(d) {
                 $("#main-idea").show();
                 showGenerateRQButton();
             }
+            
+            // Switch tab back to research-brief and hide RQ display
+            switchTab('research-brief');
+            $('#rq-display').hide();
             
             // Update score display if score is available
             if (response.average_score !== undefined && typeof updateScoreDisplay === 'function') {
@@ -3613,10 +3644,12 @@ function addExplorationMessage(message, isLoading = false) {
     messageDiv.setAttribute('data-sender', 'system');
     
     if (isLoading) {
+        // Apply animated dots if message contains "..."
+        const animatedMessage = message.replace('...', '<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>');
         messageDiv.innerHTML = `
             <div class="loading-state">
                 <div class="spinner"></div>
-                <div class="loading-text">${message}</div>
+                <div class="loading-text">${animatedMessage}</div>
             </div>`;
     } else {
         messageDiv.textContent = message;

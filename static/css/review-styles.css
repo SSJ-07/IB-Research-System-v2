@@ -176,37 +176,15 @@
   gap: 8px;
 }
 
-/* Highlight styles - all monochrome */
+/* Highlight styles - base styles (colors set by styles.css) */
 .highlight {
   cursor: pointer;
   transition: background-color 0.2s;
   padding: 2px 0;
-  background-color: rgba(156, 163, 175, 0.25);
 }
 
-.highlight[data-aspect="novelty"],
-.highlight[data-aspect="feasibility"],
-.highlight[data-aspect="clarity"],
-.highlight[data-aspect="impact"],
-.highlight[data-aspect="methodology"],
-.highlight[data-aspect="lack_of_novelty"],
-.highlight[data-aspect="assumptions"],
-.highlight[data-aspect="vagueness"],
-.highlight[data-aspect="feasibility_and_practicality"],
-.highlight[data-aspect="overgeneralization"],
-.highlight[data-aspect="overstatement"],
-.highlight[data-aspect="evaluation_and_validation_issues"],
-.highlight[data-aspect="justification_for_methods"],
-.highlight[data-aspect="reproducibility"],
-.highlight[data-aspect="contradictory_statements"],
-.highlight[data-aspect="alignment"],
-.highlight[data-aspect="ethical_and_social_considerations"],
-.highlight[data-aspect="robustness"] {
-  background-color: rgba(156, 163, 175, 0.25);
-}
-
-.highlight:hover,
-.highlight[data-aspect]:hover {
+/* Fallback hover for highlights without data-aspect */
+.highlight:hover:not([data-aspect]) {
   background-color: rgba(156, 163, 175, 0.45);
 }
 
@@ -478,9 +456,7 @@
 }
 
 .review-loading::after {
-  content: "...";
-  display: inline-block;
-  animation: loading-pulse 1.5s infinite;
+  content: none;
 }
 
 /* Improve Idea button */

@@ -353,10 +353,12 @@ const mctsAuto = {
         if (isLoading) {
             messageContainer = document.createElement("div");
             messageContainer.setAttribute("data-sender", "system");
+            // Apply animated dots if message contains "..."
+            const animatedMessage = message.replace('...', '<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>');
             messageContainer.innerHTML = `
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">${message}</div>
+                    <div class="loading-text">${animatedMessage}</div>
                 </div>
             `;
         } else {

@@ -1004,7 +1004,7 @@ class ReviewUI {
       loadingMsg.setAttribute('data-sender', 'system');
       loadingMsg.id = `loading-${aspect}`;
       loadingMsg.className = 'review-loading';
-      loadingMsg.textContent = `Analyzing ${aspect}...`;
+      loadingMsg.innerHTML = `Analyzing ${aspect}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>`;
       
       chatArea.appendChild(loadingMsg);
       chatArea.scrollTop = chatArea.scrollHeight;

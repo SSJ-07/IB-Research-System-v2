@@ -176,13 +176,13 @@ const retrieval = {
     
     // Show generating query state in the center chat area
     showGeneratingQueryState: function(section) {
-        const text = section ? `Generating search query for ${section.replace('_', ' ')}...` : "Generating search query based on research idea...";
+        const baseText = section ? `Generating search query for ${section.replace('_', ' ')}` : "Generating search query based on research idea";
         // Add message to chat box
         $("#chat-box").append(`
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">${text}</div>
+                    <div class="loading-text">${baseText}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
                 </div>
             </div>
         `);
@@ -239,7 +239,7 @@ const retrieval = {
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">Searching for relevant papers...</div>
+                    <div class="loading-text">Searching for relevant papers<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
                 </div>
             </div>
         `);
@@ -257,7 +257,7 @@ const retrieval = {
         $("#chat-box").append(`
             <div class="message-container" data-sender="system">
                 <div class="error-state">
-                    <div class="error-icon">❌</div>
+                    <div class="error-icon" style="display: inline-flex; align-items: center; color: #dc2626;"><img src="/static/icons/cross.svg" width="14" height="14" alt="error" style="opacity: 0.6;"></div>
                     <div class="error-text">${message}</div>
                     <button class="retry-button">Try Again</button>
                 </div>
@@ -481,7 +481,7 @@ const retrieval = {
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">Improving ${section.replace('_', ' ')} with retrieved knowledge...</div>
+                    <div class="loading-text">Improving ${section.replace('_', ' ')} with retrieved knowledge<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
                 </div>
             </div>
         `);
@@ -522,7 +522,7 @@ const retrieval = {
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">Improving research idea with retrieved knowledge...</div>
+                    <div class="loading-text">Improving research idea with retrieved knowledge<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
                 </div>
             </div>
         `);
