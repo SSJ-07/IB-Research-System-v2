@@ -18,9 +18,13 @@ if (typeof updateChat !== 'function') {
         if (!messages || !messages.length) return;
         
         const chatBox = $("#chat-box");
-        // Append new messages
+        // Append new messages, filtering out "Navigated to node" messages
         messages.forEach(msg => {
             if (msg.role && msg.content) {
+                // Filter out "Navigated to node" messages
+                if (msg.content.includes('Navigated to node') || msg.content.includes('navigated to node')) {
+                    return;
+                }
                 const messageDiv = $('<div></div>')
                     .attr('data-sender', msg.role)
                     .html(formatMessage(msg.content));

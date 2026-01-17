@@ -1406,7 +1406,13 @@ function expandSection(section) {
     // Show loading state
     const btn = $(`.expand-section-btn[data-section="${section}"]`);
     const originalText = btn.text();
-    btn.prop('disabled', true).html(createLoadingText('Generating...'));
+    const sectionNames = {
+        'background': 'Generating Background Information...',
+        'procedure': 'Generating Procedure...',
+        'research_design': 'Generating Research Design...'
+    };
+    const loadingText = sectionNames[section] || 'Generating...';
+    btn.prop('disabled', true).html(createLoadingText(loadingText));
     
     $.ajax({
         url: `/api/expand/${section}`,
@@ -2014,9 +2020,10 @@ function loadIdea(isInitialLoad = false) {
 }
 
 function showGenerateRQButton() {
-    // Show the Generate RQ button if research brief is visible and has content
+    // Show the Generate RQ button if research brief has content (regardless of visibility)
+    // This ensures the button shows even when viewing IA section tab
     // Do NOT show bottom-panel or divider here - only show after RQ is generated
-    if ($("#main-idea").is(":visible") && $("#main-idea").html().trim().length > 0) {
+    if ($("#main-idea").html().trim().length > 0) {
         $("#generate-rq-container").show();
     } else {
         $("#generate-rq-container").hide();
@@ -2043,6 +2050,18 @@ function toggleAutoGenerate() {
         // Reset counter
         mctsIterationCount = 0;
         currentMCTSDepth = 0;
+        
+        // Stop MCTS loading animation if it's still running
+        if (window.mctsStartMessage && window.mctsStartMessage.length) {
+            const loadingSpan = window.mctsStartMessage.find('.loading-dots');
+            if (loadingSpan.length) {
+                // Replace loading dots with static text
+                const messageText = window.mctsStartMessage.html();
+                const staticText = messageText.replace(/<span class="loading-dots">.*?<\/span>/, '');
+                window.mctsStartMessage.html(staticText);
+            }
+            window.mctsStartMessage = null;
+        }
         
         // Add system message about stopping
         const chatArea = $("#chat-box");
@@ -2119,11 +2138,15 @@ function toggleAutoGenerate() {
         const chatArea = $("#chat-box");
         const startMessage = $('<div></div>')
             .attr('data-sender', 'system')
+            .attr('data-mcts-loading', 'true')
             .html(`<span style="display: flex; align-items: center; gap: 6px;"><img src="/static/icons/robot.svg" width="14" height="14" alt="robot" style="opacity: 0.6;"> ${createLoadingText(`Starting MCTS exploration (${MCTS_CONFIG.maxIterations} iterations)...`)}</span>`)
             .hide();
         chatArea.append(startMessage);
         startMessage.slideDown();
         chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
+        
+        // Store reference to stop loading animation later
+        window.mctsStartMessage = startMessage;
         
         // Helper functions
         function getCurrentDepth() {
@@ -2143,6 +2166,18 @@ function toggleAutoGenerate() {
             
             if (buttonInactive || maxIterationsReached || maxDepthReached) {
                 // STOP: Clean up and show final results
+                
+                // Stop MCTS loading animation if it's still running
+                if (window.mctsStartMessage && window.mctsStartMessage.length) {
+                    const loadingSpan = window.mctsStartMessage.find('.loading-dots');
+                    if (loadingSpan.length) {
+                        // Replace loading dots with static text
+                        const messageText = window.mctsStartMessage.html();
+                        const staticText = messageText.replace(/<span class="loading-dots">.*?<\/span>/, '');
+                        window.mctsStartMessage.html(staticText);
+                    }
+                    window.mctsStartMessage = null;
+                }
                 
                 // Clear timer
                 if (window.autoGenerateTimer) {
@@ -2300,6 +2335,18 @@ function toggleAutoGenerate() {
                         
                         window.autoGenerateTimer = setTimeout(performMCTSStep, MCTS_CONFIG.explorationDelay);
                     } else {
+                        // MCTS exploration completed - stop loading animation
+                        if (window.mctsStartMessage && window.mctsStartMessage.length) {
+                            const loadingSpan = window.mctsStartMessage.find('.loading-dots');
+                            if (loadingSpan.length) {
+                                // Replace loading dots with static text
+                                const messageText = window.mctsStartMessage.html();
+                                const staticText = messageText.replace(/<span class="loading-dots">.*?<\/span>/, '');
+                                window.mctsStartMessage.html(staticText);
+                            }
+                            window.mctsStartMessage = null;
+                        }
+                        
                         // Trigger stop logic by calling performMCTSStep again
                         // This time it will hit the stop condition at the top
                         setTimeout(performMCTSStep, 100); // Small delay to ensure UI updates
@@ -2392,7 +2439,13 @@ function stepAction(action) {
             
             // Update chat messages if provided
             if (data.messages) {
-                updateChat(data.messages);
+                // Filter out "Navigated to node" messages
+                const filteredMessages = data.messages.filter(msg => 
+                    !msg.content || (!msg.content.includes('Navigated to node') && !msg.content.includes('navigated to node'))
+                );
+                if (filteredMessages.length > 0) {
+                    updateChat(filteredMessages);
+                }
             }
 
             if (data.average_score !== undefined) {
@@ -2687,15 +2740,31 @@ function selectNode(d) {
                     structuredIdea = '';
                 }
                 
+                // Check which tab is currently active BEFORE updating UI
+                const wasInIASection = $('#tab-ia-section').hasClass('active');
+                
                 const formattedContent = marked.parse(structuredIdea);
                 $("#main-idea").html(prependFeedbackToIdea(formattedContent, response.feedback));
-                $("#main-idea").show();
+                
+                // Only show main-idea and switch tabs if we're NOT in IA section
+                // If we're in IA section, just update the content but don't change visibility
+                if (!wasInIASection) {
+                    $("#main-idea").show();
+                    switchTab('research-brief');
+                    $('#rq-display').hide();
+                }
+                // If we were in IA section, don't show main-idea, don't switch tabs, don't hide anything
+                // Just update the content silently - IA section remains unchanged
+                
                 showGenerateRQButton();
+            } else {
+                // No idea in response - check tab state
+                const wasInIASection = $('#tab-ia-section').hasClass('active');
+                if (!wasInIASection) {
+                    switchTab('research-brief');
+                    $('#rq-display').hide();
+                }
             }
-            
-            // Switch tab back to research-brief and hide RQ display
-            switchTab('research-brief');
-            $('#rq-display').hide();
             
             // Update score display if score is available
             if (response.average_score !== undefined && typeof updateScoreDisplay === 'function') {
@@ -2800,12 +2869,19 @@ function refreshResearchIdea() {
             // Update chat messages if any (only system messages)
             if (response.messages) {
                 // Filter to only get system messages and not the full idea
-                const systemMessages = response.messages.filter(msg => 
-                    msg.role === 'system' || 
-                    (msg.role === 'assistant' && msg.content.length < 500)
-                );
+                // Also filter out "Navigated to node" messages
+                const systemMessages = response.messages.filter(msg => {
+                    // Skip "Navigated to node" messages
+                    if (msg.content && (msg.content.includes('Navigated to node') || msg.content.includes('navigated to node'))) {
+                        return false;
+                    }
+                    return msg.role === 'system' || 
+                        (msg.role === 'assistant' && msg.content.length < 500);
+                });
                 
-                updateChat(systemMessages);
+                if (systemMessages.length > 0) {
+                    updateChat(systemMessages);
+                }
             }
             
             // Reload tree visualization

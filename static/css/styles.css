@@ -55,11 +55,14 @@
 /* Generate RQ button styling */
 #generate-rq-container {
     transition: opacity 0.3s ease;
+    margin-top: auto;
+    flex-shrink: 0;
 }
 
 #generate-rq-btn-main {
     background-color: #1f2937;
     color: white;
+    white-space: nowrap;
 }
 
 #generate-rq-btn-main:hover {
@@ -718,6 +721,7 @@ html {
     align-items: center;
     justify-content: center;
     gap: 6px;
+    white-space: nowrap;
 }
 
 .top-bar button:hover {
@@ -2077,11 +2081,13 @@ html {
 /* Animated bouncing dots for loading messages */
 .loading-dots {
     display: inline;
+    white-space: nowrap;
 }
 
 .loading-dots span {
     display: inline;
     animation: bounce 1.4s infinite ease-in-out both;
+    white-space: nowrap;
 }
 
 .loading-dots span:nth-child(1) {
@@ -2642,6 +2648,8 @@ hr {
 
 .tab-content {
     display: none;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .tab-content.active {
@@ -2874,6 +2882,7 @@ hr {
     transition: background-color 0.2s;
     margin-right: 8px;
     margin-bottom: 8px;
+    white-space: nowrap;
 }
 
 .section-gen-btn:hover {
