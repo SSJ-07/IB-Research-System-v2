@@ -48,15 +48,18 @@ window.sendMessage = function sendMessage() {
     if (isFirstMessage) {
         loadingMessage = 'Generating initial idea...';
     } else {
-        const lowerContent = content.toLowerCase();
-        if (lowerContent.includes('feedback') || lowerContent.includes('improve') || lowerContent.includes('refine') || lowerContent.includes('suggest')) {
+        // Check for feedback-related keywords more thoroughly
+        const lowerContent = content.toLowerCase().trim();
+        const feedbackKeywords = ['feedback', 'improve', 'refine', 'suggest', 'change', 'modify', 'update', 'revise', 'edit', 'adjust'];
+        const hasFeedback = feedbackKeywords.some(keyword => lowerContent.includes(keyword));
+        if (hasFeedback) {
             loadingMessage = 'Processing your feedback to improve the research idea...';
         }
     }
     
     var loadingDiv = $('<div></div>')
         .attr('data-sender', 'system')
-        .html(createLoadingText(loadingMessage))
+        .html(`<span style="display: flex; align-items: center; gap: 6px;">${createLoadingText(loadingMessage)}</span>`)
         .hide();
     chatArea.append(loadingDiv);
     loadingDiv.slideDown();
@@ -104,6 +107,8 @@ window.sendMessage = function sendMessage() {
                 const structuredIdea = parseAndFormatStructuredIdea(data.idea);
                 $("#main-idea").html(prependFeedbackToIdea(formatMessage(structuredIdea), data.feedback));
                 $("#main-idea").removeAttr('style').addClass('active');
+                // Hide placeholder when content is added
+                $("#brief-placeholder").hide();
                 showGenerateRQButton();
             }
 
@@ -936,6 +941,8 @@ function generateIATopic() {
 function displayIATopic(content) {
     $('#ia-topic-content').html(formatMessage(content));
     $('#ia-topic-display').show();
+    // Hide IA section placeholder when content is displayed
+    $('#ia-placeholder').hide();
     
     // Show IA sections tab button and switch to research brief (initial state)
     $('#tab-ia-section').show();
@@ -984,7 +991,7 @@ window.generateRQ = function generateRQ() {
     }
     
     // Show loading state
-    btn.prop('disabled', true).html(createLoadingText('Generating...'));
+    btn.prop('disabled', true).html(`<span style="display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">${createLoadingText('Generating Research Question...')}</span>`);
     
     // Load all topics from syllabus if physics subject
     const sendRQRequest = function(topics) {
@@ -1055,6 +1062,8 @@ function displayRQ(rq, warnings, is_valid) {
     // Update content
     rqContent.text(rq);
     rqDisplay.show();
+    // Hide IA section placeholder when RQ is displayed
+    $('#ia-placeholder').hide();
     
     // Show IA sections tab button and switch to research brief (initial state)
     $('#tab-ia-section').show();
@@ -1412,7 +1421,7 @@ function expandSection(section) {
         'research_design': 'Generating Research Design...'
     };
     const loadingText = sectionNames[section] || 'Generating...';
-    btn.prop('disabled', true).html(createLoadingText(loadingText));
+    btn.prop('disabled', true).html(`<span style="display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; font-size: inherit;">${createLoadingText(loadingText)}</span>`);
     
     $.ajax({
         url: `/api/expand/${section}`,
@@ -1496,14 +1505,20 @@ function displaySectionInChat(section, content, citations) {
         </div>
     `);
     
+    // Store original content in data attribute for later use
+    sectionCard.data('original-content', content);
+    sectionCard.data('original-citations', citations);
+    
     // Add click handlers
     sectionCard.find('.section-edit-btn').on('click', function() {
         editSection(sectionCard, section, content, citations);
     });
     
     sectionCard.find('.section-approve-btn').on('click', function() {
-        const editedContent = sectionCard.find('.section-text').html();
-        handleSectionApproval(section, editedContent, citations);
+        // Get the original raw content, not the formatted HTML
+        const originalContent = sectionCard.data('original-content') || content;
+        const originalCitations = sectionCard.data('original-citations') || citations;
+        handleSectionApproval(section, originalContent, originalCitations);
         // Hide all other section cards for this section type
         $(`.section-card[data-section="${section}"]`).not(sectionCard).fadeOut(300, function() { $(this).remove(); });
         sectionCard.fadeOut(300, function() { $(this).remove(); });
@@ -1588,22 +1603,27 @@ function handleSectionApproval(section, content, citations) {
     };
     const sectionName = sectionNames[section] || section;
     
-    // Update the section in the sidebar
-    $(`#${section}-content`).html(content);
+    // Clean content (remove template citations)
+    let cleanContent = content;
+    if (typeof cleanContent === 'string') {
+        cleanContent = cleanContent.replace(/\[ID: N\/A \| AUTHOR_REF: N\/A \| YEAR: N\/A \| Citations: N\/A\]/g, '');
+        cleanContent = cleanContent.replace(/\[ID: .*? \| AUTHOR_REF: N\/A \| YEAR: N\/A \| Citations: .*?\]/g, '');
+        cleanContent = cleanContent.replace(/\[ID \| AUTHOR_REF \| YEAR \| Citations: CITES\]/g, '');
+        cleanContent = cleanContent.replace(/\[ID \| AUTHOR_REF \| YEAR \| Citations: CITES\]\./g, '');
+    }
+    
+    // Update the section in the sidebar using displayExpandedSection for proper formatting
+    // This will format the content and display it in the IA section
+    displayExpandedSection(section, cleanContent, citations || []);
+    
+    // Ensure section is visible
     $(`#${section}-section`).show();
     
-    // Display citations with consistent styling
-    const numbered = section === 'background';
-    const rendered = renderCitationList(citations || [], { numbered });
-    if (rendered.count > 0) {
-        $(`#${section}-citations`)
-            .data('citations', rendered.citations)
-            .addClass('section-citations-box')
-            .html(`<strong>Sources (${rendered.count}):</strong>` + rendered.html)
-            .show();
-    } else {
-        $(`#${section}-citations`).hide();
-    }
+    // Hide IA placeholder since we now have content
+    $('#ia-placeholder').hide();
+    
+    // Switch to IA section tab to show the approved content
+    switchTab('ia-section');
     
     // Show success message with consistent styling
     const chatArea = $("#chat-box");
@@ -2002,7 +2022,6 @@ function loadIdea(isInitialLoad = false) {
                 $("#main-idea").html(prependFeedbackToIdea(formattedContent, data.feedback));
                 highlightState.lastContent = $("#main-idea").html();
                 $("#main-idea").show(); // Show the main idea panel
-                $("#brief-placeholder").hide(); // Hide the placeholder
                 
                 // Show Generate RQ button when research brief is displayed
                 showGenerateRQButton();
@@ -2303,7 +2322,6 @@ function toggleAutoGenerate() {
                         }
                         
                         // Make sure Research Brief is visible
-                        $("#brief-placeholder").hide();
                         $("#main-idea").show();
                         showGenerateRQButton();
                     }
@@ -2317,7 +2335,7 @@ function toggleAutoGenerate() {
                     const chatArea = $("#chat-box");
                     const progressMsg = $('<div></div>')
                         .attr('data-sender', 'system')
-                        .text(`🔄 MCTS Iteration ${mctsIterationCount}/${MCTS_CONFIG.maxIterations} (Depth: ${currentMCTSDepth}/${MCTS_CONFIG.maxDepth}) - Score: ${(data.average_score || 0).toFixed(1)}/10`)
+                        .html(`<span style="display: flex; align-items: center; gap: 6px;"><img src="/static/icons/refresh.svg" width="14" height="14" alt="refresh" style="opacity: 0.6;"> MCTS Iteration ${mctsIterationCount}/${MCTS_CONFIG.maxIterations} (Depth: ${currentMCTSDepth}/${MCTS_CONFIG.maxDepth}) - Score: ${(data.average_score || 0).toFixed(1)}/10</span>`)
                         .hide();
                     chatArea.append(progressMsg);
                     progressMsg.slideDown();
@@ -3896,12 +3914,15 @@ function startNewResearch() {
         
         // Hide panels
         $('#ia-sections-panel').hide();
-        $('#tab-ia-section').hide();
         $('#generate-rq-container').hide();
+        
+        // Show IA Section tab (it should be visible initially)
+        $('#tab-ia-section').show();
         
         // Reset inputs
         $('#chat-input').val('').attr('placeholder', 'Enter your research goal...');
-        $('#subject-select').val('');
+        // Keep the current subject selected (don't clear it)
+        // The subject selector should maintain its value
         
         // Reset tabs / views
         switchTab('research-brief');
@@ -3910,7 +3931,19 @@ function startNewResearch() {
         $('#welcome-message').show();
         $('#proposal-content').hide().empty();
         $('#edit-button').hide();
-        $('#main-idea').html('<p style="color: #94a3b8; text-align: center; padding: 20px;">Enter a new research goal to begin.</p>');
+        
+        // Clear main-idea and show the initial placeholder (like on first load)
+        $('#main-idea').empty();
+        $('#brief-placeholder').show();
+        
+        // Show IA section placeholder
+        $('#ia-placeholder').show();
+        
+        // Hide copy button
+        const copyContainer = document.getElementById('copy-brief-container');
+        if (copyContainer) {
+            copyContainer.style.display = 'none';
+        }
 
         // Reset tree & review safely
         if (window.updateTreeVisualization) updateTreeVisualization({ nodes: [] });
@@ -3921,9 +3954,10 @@ function startNewResearch() {
             window.main_idea = '';
         }
         
-        // Reset score display
-        if (typeof updateScoreDisplay === 'function') {
-            updateScoreDisplay(0);
+        // Reset score display to initial state (show "--" instead of "0")
+        const scoreValue = document.getElementById('current-score');
+        if (scoreValue) {
+            scoreValue.textContent = '-/10';
         }
         
         // Show success message
@@ -4259,7 +4293,15 @@ function switchTab(tabName) {
         mainIdea.show().addClass('active');
         
         // Handle placeholder visibility
-        if (mainIdea.html().trim().length === 0 || mainIdea.is(':empty')) {
+        // Check if main-idea has meaningful text content (not just HTML tags or whitespace)
+        const mainIdeaText = mainIdea.text().trim();
+        const mainIdeaHtml = mainIdea.html().trim();
+        
+        // Show placeholder if there's no meaningful text content
+        // Also check for the specific "Enter a new research goal" message that shouldn't be there
+        if (mainIdeaText.length === 0 || 
+            mainIdeaHtml === '<p style="color: #94a3b8; text-align: center; padding: 20px;">Enter a new research goal to begin.</p>' ||
+            mainIdea.is(':empty')) {
             placeholder.show();
         } else {
             placeholder.hide();
@@ -4275,6 +4317,21 @@ function switchTab(tabName) {
         mainIdea.hide().removeClass('active');
         placeholder.hide(); // Never show brief placeholder in IA section tab
         iaSections.show().addClass('active');
+        
+        // Handle IA section placeholder visibility
+        const iaPlaceholder = $('#ia-placeholder');
+        const hasIATopic = $('#ia-topic-content').text().trim().length > 0;
+        const hasRQ = $('#rq-content').text().trim().length > 0;
+        const hasExpandedSections = $('#background-section').is(':visible') || 
+                                     $('#procedure-section').is(':visible') || 
+                                     $('#research_design-section').is(':visible');
+        
+        // Show placeholder if there's no IA topic, RQ, or expanded sections
+        if (hasIATopic || hasRQ || hasExpandedSections) {
+            iaPlaceholder.hide();
+        } else {
+            iaPlaceholder.show();
+        }
         
         console.log('Switched to IA Section UI state');
     } else {

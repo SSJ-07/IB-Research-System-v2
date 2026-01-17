@@ -182,7 +182,7 @@ const retrieval = {
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">${baseText}<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
+                    <div class="loading-text">${baseText}</div>
                 </div>
             </div>
         `);
@@ -239,7 +239,7 @@ const retrieval = {
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">Searching for relevant papers<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
+                    <div class="loading-text">Searching for relevant papers</div>
                 </div>
             </div>
         `);
