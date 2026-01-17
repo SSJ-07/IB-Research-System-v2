@@ -274,17 +274,79 @@ html {
     opacity: 0.6;
 }
 
+/* Sidebar search bar */
+.sidebar-search {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    height: 2rem;
+    min-height: 2rem;
+    max-height: 2rem;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    box-sizing: border-box;
+}
+
+.sidebar-search input {
+    flex: 1;
+    height: 100%;
+    padding: 0 0.75rem;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    color: #374151;
+    background-color: transparent;
+    min-width: 0;
+}
+
+.sidebar-search input::placeholder {
+    color: #9ca3af;
+}
+
+.sidebar-search button {
+    height: 100%;
+    width: 2rem;
+    padding: 0;
+    background: #e5e7eb;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-search button:hover {
+    background: #d1d5db;
+}
+
+.sidebar-search button img {
+    width: 14px;
+    height: 14px;
+    opacity: 0.6;
+}
+
+/* PDF/Attach button alignment fix */
 .sidebar-button.pdf-button {
-    width: auto;
-    padding: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
+    max-height: 2rem;
+    padding: 0;
     flex: none;
     border-radius: 10px;
-    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 .sidebar-button.pdf-button img {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     opacity: 0.6;
 }
 
@@ -383,6 +445,111 @@ html {
     width: 14px;
     height: 14px;
     opacity: 0.6;
+}
+
+/* In-place proposal editing styles */
+.proposal-box.editing {
+    padding: 0;
+}
+
+.proposal-edit-container {
+    width: 100%;
+}
+
+.proposal-edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 6px 6px 0 0;
+}
+
+.proposal-edit-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.proposal-edit-close {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.proposal-edit-close:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.proposal-edit-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 1rem;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+    font-family: inherit;
+    color: #1f2937;
+    resize: vertical;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.proposal-edit-textarea:focus {
+    outline: none;
+}
+
+.proposal-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 0.75rem 1rem;
+    background: #f9fafb;
+    border-radius: 0 0 6px 6px;
+}
+
+.proposal-edit-cancel {
+    padding: 6px 12px;
+    background-color: transparent;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.proposal-edit-cancel:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.proposal-edit-save {
+    padding: 6px 12px;
+    background-color: #374151;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.proposal-edit-save:hover {
+    background-color: #1f2937;
 }
 
 .chat-box {
@@ -1661,26 +1828,26 @@ html {
     margin-left: 10px;
 }
 
-/* Loading state */
+/* Loading state - Modern monochrome styling */
 .loading-state {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.5);
+    padding: 2rem 1.5rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 6px;
-    margin: 0.5rem 0;
+    margin: 14px 0;
 }
 
 .spinner {
-    border: 3px solid rgba(0, 0, 0, 0.1);
     width: 32px;
     height: 32px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #374151;
     border-radius: 50%;
-    border-left-color: #6b7280;
-    animation: spin 1s linear infinite;
-    margin-bottom: 14px;
+    animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
@@ -1689,9 +1856,10 @@ html {
 }
 
 .loading-text {
-    margin-top: 0.5rem;
+    margin-top: 1rem;
     color: #6b7280;
     font-size: 13px;
+    font-weight: 500;
 }
 
 /* Error state */
@@ -2245,6 +2413,7 @@ hr {
 
 /* RQ Display Panel */
 .rq-display-panel {
+    position: relative;
     background-color: #f9fafb;
     border-radius: 6px;
     padding: 14px;
@@ -2257,6 +2426,27 @@ hr {
     font-weight: 500;
     color: #374151;
     margin-bottom: 10px;
+    display: inline-block;
+}
+
+.rq-validity-badge {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.rq-validity-badge.valid {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.rq-validity-badge.needs-review {
+    background-color: #f3f4f6;
+    color: #6b7280;
 }
 
 .rq-display-content {
@@ -2272,6 +2462,150 @@ hr {
     border-radius: 4px;
     color: #6b7280;
     font-size: 12px;
+}
+
+/* RQ Card styles (chat display) */
+.rq-card {
+    background-color: #f9fafb;
+    border-radius: 6px;
+    padding: 0;
+    margin: 14px 0;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.rq-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.rq-card-header h3 {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin: 0;
+}
+
+.rq-status-badge {
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.rq-status-badge.valid {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.rq-status-badge.needs-review {
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+
+.rq-text {
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #1f2937;
+    background-color: #ffffff;
+}
+
+.rq-card .rq-warnings {
+    margin: 0;
+    padding: 10px 14px;
+    background-color: #f3f4f6;
+    border-top: 1px solid #e5e7eb;
+    border-radius: 0;
+}
+
+.rq-card .rq-warnings .rq-warnings-title {
+    font-weight: 500;
+    color: #6b7280;
+    font-size: 12px;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.rq-card .rq-warnings ul {
+    margin: 0;
+    padding-left: 16px;
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.rq-card .rq-warnings li {
+    margin-bottom: 4px;
+}
+
+.rq-actions {
+    display: flex;
+    gap: 8px;
+    padding: 12px 14px;
+    background-color: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* RQ Edit mode styles */
+.ia-section-edit-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 12px;
+    border: 1px solid #9ca3af;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    background: #ffffff;
+}
+
+.ia-section-edit-textarea:focus {
+    outline: none;
+    border-color: #6b7280;
+}
+
+.ia-section-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: flex-end;
+}
+
+.ia-section-save-btn {
+    padding: 6px 12px;
+    background-color: #374151;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ia-section-save-btn:hover {
+    background-color: #1f2937;
+}
+
+.ia-section-cancel-btn {
+    padding: 6px 12px;
+    background-color: transparent;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ia-section-cancel-btn:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
 }
 
 /* Section generate buttons */

@@ -1004,23 +1004,32 @@ window.generateRQ = function generateRQ() {
 };
 
 function displayRQ(rq, warnings, is_valid) {
-    $('#rq-content').text(rq);
-    $('#rq-display').show();
+    const rqDisplay = $('#rq-display');
+    const rqContent = $('#rq-content');
+    
+    // Update content
+    rqContent.text(rq);
+    rqDisplay.show();
     
     // Show IA sections tab button and switch to research brief (initial state)
     $('#tab-ia-section').show();
     switchTab('research-brief');
     
-    // Show validation status
-    if (is_valid === false) {
-        $('#rq-content').css('color', '#d32f2f');
-    } else {
-        $('#rq-content').css('color', '#2e7d32');
-    }
+    // Remove any existing badge
+    rqDisplay.find('.rq-validity-badge').remove();
+    
+    // Add validity badge in header
+    const badgeClass = is_valid !== false ? 'valid' : 'needs-review';
+    const badgeText = is_valid !== false ? 'Valid' : 'Needs Review';
+    const badge = $(`<span class="rq-validity-badge ${badgeClass}">${badgeText}</span>`);
+    rqDisplay.find('h3').after(badge);
+    
+    // Reset text color to standard (badge handles status indication)
+    rqContent.css('color', '#1f2937');
     
     if (warnings && warnings.length > 0) {
-        $('#rq-warnings').html('<strong style="color: #d32f2f;">⚠️ Validation Warnings:</strong><ul style="margin-top: 8px;">' + 
-            warnings.map(w => `<li style="margin: 5px 0;">${w}</li>`).join('') + '</ul>');
+        $('#rq-warnings').html('<div class="rq-warnings-title">Validation Issues:</div><ul>' + 
+            warnings.map(w => `<li>${w}</li>`).join('') + '</ul>');
         $('#rq-warnings').show();
     } else {
         $('#rq-warnings').empty().hide();
@@ -1051,10 +1060,10 @@ function displayRQInChat(rq, warnings, is_valid) {
                 </div>
             ` : ''}
             <div class="rq-actions">
-                <button class="rq-action-btn secondary rq-edit-btn">Edit</button>
-                <button class="rq-action-btn primary rq-approve-btn">Approve</button>
-                <button class="rq-action-btn danger rq-decline-btn">Decline</button>
-                <button class="rq-action-btn secondary rq-feedback-btn">Feedback</button>
+                <button class="ia-section-action-btn secondary rq-edit-btn">Edit</button>
+                <button class="ia-section-action-btn rq-approve-btn">Approve</button>
+                <button class="ia-section-action-btn secondary rq-decline-btn">Decline</button>
+                <button class="ia-section-action-btn secondary rq-feedback-btn">Feedback</button>
             </div>
         </div>
     `);
@@ -2791,81 +2800,78 @@ $(window).resize(function () {
     }
 });
 
-// Add this function to handle the edit button click
+// Add this function to handle the edit button click - in-place editing
 $("#edit-button").click(function () {
-    // Create and show the custom editor popup
-    createEditorPopup("Edit Research Proposal", $("#proposal-content").text(), function(newText) {
-        if (newText.trim() !== "") {
-            // Update the proposal content
-            $("#proposal-content").text(newText);
-        }
-    });
-});
-
-// Create custom editor popup function
-function createEditorPopup(title, content, saveCallback) {
-    // Create overlay
-    const overlay = $('<div class="editor-popup-overlay"></div>');
+    const proposalBox = $("#proposal-box");
+    const proposalContent = $("#proposal-content");
+    const editButton = $(this);
     
-    // Create popup structure
-    const popup = $(`
-        <div class="editor-popup">
-            <div class="editor-popup-header">
-                <div class="editor-popup-title">${title}</div>
-                <button class="editor-popup-close">&times;</button>
+    // Check if already in edit mode
+    if (proposalBox.hasClass('editing')) {
+        return;
+    }
+    
+    // Get current content
+    const currentText = proposalContent.text();
+    
+    // Add editing class
+    proposalBox.addClass('editing');
+    
+    // Hide edit button and proposal content
+    editButton.hide();
+    proposalContent.hide();
+    
+    // Create in-place edit elements
+    const editContainer = $(`
+        <div class="proposal-edit-container">
+            <div class="proposal-edit-header">
+                <span class="proposal-edit-title">Edit Research Proposal</span>
+                <button class="proposal-edit-close" type="button">&times;</button>
             </div>
-            <div class="editor-popup-body">
-                <textarea class="editor-popup-textarea">${content}</textarea>
-            </div>
-            <div class="editor-popup-footer">
-                <button class="editor-popup-button editor-cancel-button">Cancel</button>
-                <button class="editor-popup-button editor-save-button">Save</button>
+            <textarea class="proposal-edit-textarea">${currentText}</textarea>
+            <div class="proposal-edit-actions">
+                <button class="proposal-edit-cancel" type="button">Cancel</button>
+                <button class="proposal-edit-save" type="button">Save</button>
             </div>
         </div>
     `);
     
-    // Add to DOM
-    overlay.append(popup);
-    $('body').append(overlay);
+    // Insert edit container
+    proposalBox.append(editContainer);
     
     // Focus on textarea
-    const textarea = popup.find('.editor-popup-textarea');
+    const textarea = editContainer.find('.proposal-edit-textarea');
     textarea.focus();
-    
-    // Position cursor at the end of text
     const textLength = textarea.val().length;
     textarea[0].setSelectionRange(textLength, textLength);
     
-    // Close handlers
-    function closePopup() {
-        overlay.remove();
+    // Close/Cancel handler
+    function closeEditMode() {
+        editContainer.remove();
+        proposalBox.removeClass('editing');
+        proposalContent.show();
+        editButton.show();
     }
     
-    popup.find('.editor-popup-close, .editor-cancel-button').click(closePopup);
+    editContainer.find('.proposal-edit-close, .proposal-edit-cancel').click(closeEditMode);
     
     // Save handler
-    popup.find('.editor-save-button').click(function() {
-        const newContent = textarea.val();
-        saveCallback(newContent);
-        closePopup();
+    editContainer.find('.proposal-edit-save').click(function() {
+        const newContent = textarea.val().trim();
+        if (newContent !== "") {
+            proposalContent.text(newContent);
+        }
+        closeEditMode();
     });
     
     // Close on escape key
-    $(document).on('keydown.editorPopup', function(e) {
+    $(document).on('keydown.proposalEdit', function(e) {
         if (e.key === 'Escape') {
-            closePopup();
-            $(document).off('keydown.editorPopup');
+            closeEditMode();
+            $(document).off('keydown.proposalEdit');
         }
     });
-    
-    // Prevent closing when clicking inside popup
-    popup.click(function(e) {
-        e.stopPropagation();
-    });
-    
-    // Close when clicking on overlay
-    overlay.click(closePopup);
-}
+});
 
 // Update handleReviewAction function
 // function handleReviewAction(action) {

@@ -191,40 +191,6 @@
             -webkit-mask-image: linear-gradient(to bottom, black 0, black 90%, transparent 100%);
         }
 
-        .loading-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #3b82f6;
-            animation: spin 1s linear infinite;
-            margin-bottom: 15px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .loading-text {
-            color: #4b5563;
-            font-size: 0.9em;
-        }
-
         .error-state {
             display: flex;
             flex-direction: column;
@@ -554,21 +520,6 @@
             box-sizing: border-box;
         }
 
-        .pdf-button {
-            background: #f0f2f5;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px;
-            cursor: pointer;
-            min-width: 40px;
-            flex-shrink: 0;
-        }
-
-        .pdf-button:hover {
-            background: #e4e6eb;
-        }
     </style>
     <script src="{{ url_for('static', filename='js/secure-keys.js') }}"></script>
 </head>
