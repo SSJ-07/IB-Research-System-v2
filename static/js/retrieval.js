@@ -35,6 +35,7 @@ const retrieval = {
     currentQuery: null,
     currentResults: null,
     targetSection: null, // New field to track if we're retrieving for a specific section
+    activeRequests: new Map(), // Track all active requests and their loading elements
     
     // Generate a query based on the current research idea or a specific section
     generateQuery: async function(section) {
@@ -60,10 +61,10 @@ const retrieval = {
             return null;
         }
         
+        // Show query generation in progress and store the element (before try so it's accessible in catch)
+        const queryLoadingElement = this.showGeneratingQueryState(section);
+        
         try {
-            // Show query generation in progress
-            this.showGeneratingQueryState(section);
-            
             const response = await $.ajax({
                 url: endpoint,
                 type: "POST",
@@ -74,17 +75,25 @@ const retrieval = {
             if (response && response.query) {
                 this.currentQuery = response.query;
                 
-                // Show query confirmation UI
-                this.showQueryConfirmationState(response.query);
+                // Show query confirmation UI - only remove the query generation loading state
+                this.showQueryConfirmationState(response.query, queryLoadingElement);
                 
                 return response.query;
             } else {
                 console.error("Failed to generate query:", response);
+                // Remove only the query generation loading state
+                if (queryLoadingElement && queryLoadingElement.length) {
+                    queryLoadingElement.remove();
+                }
                 this.showErrorState("Failed to generate a search query");
                 return null;
             }
         } catch (error) {
             console.error("Error generating query:", error);
+            // Remove only the query generation loading state
+            if (queryLoadingElement && queryLoadingElement.length) {
+                queryLoadingElement.remove();
+            }
             this.showErrorState("Error generating search query");
             return null;
         }
@@ -104,11 +113,14 @@ const retrieval = {
             return true;
         }
         
+        // Generate unique request ID for this retrieval (outside try block so it's accessible in catch)
+        const requestId = 'request-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        
         try {
-            // Show loading state
-            this.showLoadingState();
+            // Show loading state and store it with the request ID
+            this.showLoadingState(requestId);
             
-            console.log("LiteraturePanel: Starting retrieval for query:", queryToUse);
+            console.log("LiteraturePanel: Starting retrieval for query:", queryToUse, "Request ID:", requestId);
             
             // Make the API call with extended timeout (retrieval can take 60+ seconds)
             const response = await $.ajax({
@@ -121,13 +133,20 @@ const retrieval = {
             
             console.log("LiteraturePanel: Retrieved results:", response);
             
+            // Only remove this specific loading state (not others that might be in progress)
+            const loadingElement = this.activeRequests.get(requestId);
+            if (loadingElement && loadingElement.length) {
+                loadingElement.remove();
+                this.activeRequests.delete(requestId);
+            }
+            
             // Store and display results
             if (response && response.sections) {
                 this.currentResults = response;
                 console.log("LiteraturePanel: Displaying results, sections count:", response.sections.length);
                 try {
                     if (response.sections.length === 0) {
-                        this.showErrorState("No papers found for this query. Try a broader search.");
+                        this.showErrorState("No papers found for this query. Try a broader search.", queryToUse);
                         return false;
                     }
                     this.displayResults(response);
@@ -140,10 +159,17 @@ const retrieval = {
                 return true;
             } else {
                 console.error("LiteraturePanel: Failed to retrieve knowledge - no sections in response:", response);
-                this.showErrorState("No results found");
+                this.showErrorState("No results found", queryToUse);
                 return false;
             }
         } catch (error) {
+            // Only remove this specific loading state on error
+            const loadingElement = this.activeRequests.get(requestId);
+            if (loadingElement && loadingElement.length) {
+                loadingElement.remove();
+                this.activeRequests.delete(requestId);
+            }
+            
             console.error("LiteraturePanel: Error retrieving literature:", error);
             let errorMessage = "Error retrieving knowledge";
             if (error.status === 500) {
@@ -177,9 +203,9 @@ const retrieval = {
     // Show generating query state in the center chat area
     showGeneratingQueryState: function(section) {
         const baseText = section ? `Generating search query for ${section.replace('_', ' ')}` : "Generating search query based on research idea";
-        // Add message to chat box
-        $("#chat-box").append(`
-            <div class="message-container" data-sender="system">
+        // Add message to chat box with specific class to identify it
+        const loadingElement = $(`
+            <div class="message-container query-generation-loading" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
                     <div class="loading-text">${baseText}</div>
@@ -187,14 +213,23 @@ const retrieval = {
             </div>
         `);
         
+        $("#chat-box").append(loadingElement);
+        
         // Scroll to bottom of chat
         $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
+        
+        return loadingElement;
     },
     
     // Show query confirmation UI in the center chat area
-    showQueryConfirmationState: function(query) {
-        // Remove loading message if exists
-        $("#chat-box .message-container:last-child .loading-state").remove();
+    showQueryConfirmationState: function(query, queryLoadingElement) {
+        // Only remove the query generation loading state, not all loading states
+        if (queryLoadingElement && queryLoadingElement.length) {
+            queryLoadingElement.remove();
+        } else {
+            // Fallback: only remove query generation loading states (not "Searching for relevant papers")
+            $(".query-generation-loading").remove();
+        }
         
         // Add query confirmation UI to chat
         $("#chat-box").append(`
@@ -230,13 +265,17 @@ const retrieval = {
     },
     
     // Show loading state in the center chat area
-    showLoadingState: function() {
-        // Remove query confirmation if exists
-        $("#chat-box .message-container:last-child .query-confirmation").remove();
+    showLoadingState: function(requestId) {
+        // Remove query confirmation if exists (only from the last message, not all)
+        const lastMessage = $("#chat-box .message-container:last-child");
+        if (lastMessage.find(".query-confirmation").length > 0) {
+            lastMessage.find(".query-confirmation").remove();
+        }
         
-        // Add loading message
-        $("#chat-box").append(`
-            <div class="message-container" data-sender="system">
+        // Add loading message with unique ID
+        const loadingId = requestId || ('loading-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+        const loadingElement = $(`
+            <div class="message-container" data-sender="system" data-loading-id="${loadingId}">
                 <div class="loading-state">
                     <div class="spinner"></div>
                     <div class="loading-text">Searching for relevant papers</div>
@@ -244,40 +283,58 @@ const retrieval = {
             </div>
         `);
         
+        $("#chat-box").append(loadingElement);
+        
+        // Store this loading element with its request ID
+        if (requestId) {
+            this.activeRequests.set(requestId, loadingElement);
+        }
+        
         // Scroll to bottom of chat
         $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
+        
+        return loadingId;
     },
     
     // Show error state in the center chat area
-    showErrorState: function(message) {
-        // Remove loading message if exists
-        $("#chat-box .message-container:last-child .loading-state").remove();
+    showErrorState: function(message, query) {
+        // Remove loading message if exists (only the last one, not all)
+        const lastMessage = $("#chat-box .message-container:last-child");
+        if (lastMessage.find(".loading-state").length > 0) {
+            lastMessage.find(".loading-state").remove();
+        }
         
-        // Add error message
-        $("#chat-box").append(`
+        // If message contains "this query" and we have a query, replace it with the actual query
+        let displayMessage = message;
+        if (query && message.includes("this query")) {
+            displayMessage = message.replace("this query", `"${query}"`);
+        }
+        
+        // Add error message (without cross icon)
+        const errorElement = $(`
             <div class="message-container" data-sender="system">
                 <div class="error-state">
-                    <div class="error-icon" style="display: inline-flex; align-items: center; color: #dc2626;"><img src="/static/icons/cross.svg" width="14" height="14" alt="error" style="opacity: 0.6;"></div>
-                    <div class="error-text">${message}</div>
+                    <div class="error-text">${displayMessage}</div>
                     <button class="retry-button">Try Again</button>
                 </div>
             </div>
         `);
         
+        $("#chat-box").append(errorElement);
+        
         // Scroll to bottom of chat
         $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
         
-        // Add retry button handler
-        $(".retry-button").click(() => this.generateQuery());
+        // Add retry button handler (use the specific button in this error element)
+        errorElement.find(".retry-button").click(() => this.generateQuery());
     },
     
     // Display retrieval results in the left sidebar (keeping this functionality)
     displayResults: function(results) {
         console.log("LiteraturePanel: displayResults called with:", results);
         
-        // Remove any loading states before displaying results (safety measure)
-        $("#chat-box .message-container .loading-state").parent().remove();
-        $("#chat-box .loading-state").parent().remove();
+        // Don't remove loading states here - let each request remove its own loading state
+        // This allows multiple retrieval requests to run in parallel
         
         // Verify DOM elements exist
         const qaPlaceholder = $("#qa-placeholder");
@@ -419,11 +476,8 @@ const retrieval = {
     
     // Display a summary of results in the chat area
     displayResultsInChat: function(results) {
-        // Remove ALL loading states (more robust than just removing the last one)
-        // Remove the entire message container that contains loading states
-        $("#chat-box .message-container").has(".loading-state").remove();
-        // Also remove any standalone loading states as a fallback
-        $("#chat-box .loading-state").parent().remove();
+        // Don't remove loading states here - each request removes its own loading state
+        // This allows multiple retrieval requests to run in parallel
         
         const isSection = this.targetSection !== null;
         const targetName = isSection ? this.targetSection.replace('_', ' ') : "Research Idea";
@@ -472,6 +526,9 @@ const retrieval = {
     
     // Function to improve a specific IA section with retrieved knowledge
     improveSectionWithKnowledge: function(section) {
+        // Remove the "Knowledge Retrieved" box before starting improvement
+        $("#chat-box .retrieval-results").closest(".message-container").remove();
+        
         const iaTopic = $('#ia-topic-content').text();
         const rq = $('#rq-content').text();
         const currentContent = $(`#${section}-content`).html() || '';
@@ -481,7 +538,7 @@ const retrieval = {
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">Improving ${section.replace('_', ' ')} with retrieved knowledge<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
+                    <div class="loading-text">Improving ${section.replace('_', ' ')} with retrieved knowledge</div>
                 </div>
             </div>
         `);
@@ -517,12 +574,15 @@ const retrieval = {
         // Get the current idea text
         const ideaText = document.getElementById('main-idea').innerText;
         
+        // Remove the "Knowledge Retrieved" box before starting improvement
+        $("#chat-box .retrieval-results").closest(".message-container").remove();
+        
         // Add message to chat about improvement process
         $("#chat-box").append(`
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <div class="loading-text">Improving research idea with retrieved knowledge<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
+                    <div class="loading-text">Improving research idea with retrieved knowledge</div>
                 </div>
             </div>
         `);
@@ -626,3 +686,6 @@ $(document).ready(function() {
         retrieval.submitSearch();
     });
 });
+
+// Expose retrieval object globally for reset functionality
+window.retrieval = retrieval;

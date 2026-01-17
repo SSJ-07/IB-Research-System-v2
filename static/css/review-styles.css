@@ -477,6 +477,13 @@
   transition: all 0.2s;
   box-shadow: none;
   font-size: 13px;
+  outline: none;
+}
+
+.improve-idea-btn:focus,
+.improve-idea-btn:active {
+  outline: none;
+  border: none;
 }
 
 .improve-idea-btn:hover {

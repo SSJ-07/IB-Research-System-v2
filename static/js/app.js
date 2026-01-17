@@ -119,6 +119,11 @@ window.sendMessage = function sendMessage() {
                 updateScoreDisplay(data.average_score);
             }
 
+            // Refresh tree visualization if tree mode is active
+            if (treeMode && typeof loadTree === 'function') {
+                loadTree();
+            }
+
             // After successful idea generation, collapse physics topics if any
         },
         error: function (xhr, status, error) {
@@ -1971,7 +1976,7 @@ function submitSectionFeedbackFromPanel(section) {
     const previousContent = $(`#${section}-content`).html();
     
     // Show loading
-    $(`#${section}-content`).html('<div class="loading-state"><div class="spinner"></div><span class="loading-text">Regenerating<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></span></div>');
+    $(`#${section}-content`).html('<div class="loading-state"><div class="spinner"></div><span class="loading-text">Regenerating</span></div>');
     
     $.ajax({
         url: `/api/expand/${section}`,
@@ -2514,7 +2519,9 @@ function loadTree() {
         url: "/api/tree",
         type: "GET",
         success: function(data) {
-            if (data.state && data.state.current_idea) {
+            // Check if we have a valid tree node (has id property)
+            // Empty object {} won't have id, but tree nodes will
+            if (data && data.id) {
                 // We have at least a root node
                 treeData = transformTreeData(data);
                 createTree(treeData);
@@ -3954,6 +3961,26 @@ function startNewResearch() {
             copyContainer.style.display = 'none';
         }
 
+        // Reset LiteraturePanel (left sidebar)
+        $('#qa-content').empty().hide();
+        $('#qa-placeholder').show();
+        
+        // Reset retrieval state if available
+        if (window.retrieval) {
+            window.retrieval.currentQuery = null;
+            window.retrieval.currentResults = null;
+            window.retrieval.targetSection = null;
+            // Clear all active requests and their loading states
+            if (window.retrieval.activeRequests) {
+                window.retrieval.activeRequests.forEach((loadingElement) => {
+                    if (loadingElement && loadingElement.length) {
+                        loadingElement.remove();
+                    }
+                });
+                window.retrieval.activeRequests.clear();
+            }
+        }
+        
         // Reset tree & review safely
         if (window.updateTreeVisualization) updateTreeVisualization({ nodes: [] });
         if (window.reviewUI && reviewUI.reset) reviewUI.reset();
