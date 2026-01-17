@@ -2969,3 +2969,186 @@ a {
 a:hover {
     color: #1f2937;
 }
+
+/* Wizard styles */
+.wizard-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+}
+
+.wizard-overlay.active {
+    display: block;
+}
+
+.wizard-spotlight {
+    position: absolute;
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.wizard-modal {
+    position: absolute;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 340px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+}
+
+.wizard-progress {
+    height: 3px;
+    background: #374151;
+    border-radius: 2px;
+    margin-bottom: 16px;
+    transition: width 0.3s ease;
+}
+
+.wizard-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 8px 0;
+}
+
+.wizard-text {
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0 0 16px 0;
+}
+
+.wizard-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wizard-nav {
+    display: flex;
+    gap: 8px;
+}
+
+.wizard-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wizard-skip {
+    background: none;
+    border: none;
+    color: #9ca3af;
+}
+
+.wizard-skip:hover {
+    color: #6b7280;
+}
+
+.wizard-prev {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+
+.wizard-prev:hover {
+    background: #e5e7eb;
+}
+
+.wizard-next,
+.wizard-demo {
+    background: #374151;
+    border: none;
+    color: white;
+}
+
+.wizard-next:hover,
+.wizard-demo:hover {
+    background: #1f2937;
+}
+
+.wizard-start {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+}
+
+.wizard-start:hover {
+    background: #e5e7eb;
+}
+
+.wizard-final-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.wizard-help-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #374151;
+    color: white;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    transition: all 0.2s;
+}
+
+.wizard-help-btn:hover {
+    background: #1f2937;
+    transform: scale(1.05);
+}
+
+.demo-hint {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #374151;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    margin-bottom: 8px;
+    animation: fadeInUp 0.3s ease;
+}
+
+.demo-hint::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #374151;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
