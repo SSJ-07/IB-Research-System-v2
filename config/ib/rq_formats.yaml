@@ -5,10 +5,24 @@ physics_ia:
     - measurable_quantities
     - scope_or_range
   templates:
+    # Standard effect pattern
     - pattern: "How does {IV} affect {DV} for {range_or_conditions}?"
       example: "How does the thickness of foam affect sound attenuation at various frequencies?"
+    # Comparative pattern
     - pattern: "How does {IV} affect {DV} at {levels}, and how does this compare between {groupA} and {groupB} under {controls}?"
       example: "How does thickness of EPS and EPE foam affect sound attenuation at various frequencies, and which is more effective?"
+    # Optimization pattern
+    - pattern: "What is the optimal {IV} for maximizing {DV} in {system_or_context}?"
+      example: "What is the optimal angle of inclination for maximizing the range of a projectile launched at 5 m/s?"
+    # Threshold/limit pattern
+    - pattern: "At what value of {IV} does {phenomenon} occur in {system}?"
+      example: "At what frequency does resonance occur in a vibrating string of length 0.5m to 1.5m?"
+    # Correlation pattern
+    - pattern: "What is the relationship between {IV} and {DV} for {range_or_conditions}?"
+      example: "What is the relationship between spring constant and period of oscillation for masses between 50g and 500g?"
+    # Multi-variable comparative
+    - pattern: "Which of {optionA}, {optionB}, or {optionC} has the greatest effect on {DV} for {conditions}?"
+      example: "Which of aluminum, copper, or steel has the greatest effect on thermal conductivity at temperatures between 20°C and 80°C?"
   validation_rules:
     - must_contain_iv: true
     - must_contain_dv: true
@@ -22,12 +36,27 @@ chemistry_ia:
     - measurable_quantities
     - scope_or_range
   templates:
+    # Standard effect pattern
     - pattern: "How does {IV} affect {DV} for {range_or_conditions}?"
       example: "How does the concentration of hydrochloric acid (0.1M to 1.0M) affect the rate of reaction with magnesium ribbon?"
+    # Comparative pattern
     - pattern: "How does {IV} affect {DV} at {levels}, and how does this compare between {groupA} and {groupB} under {controls}?"
       example: "How does temperature (20°C to 60°C) affect the rate of vitamin C degradation in orange juice compared to apple juice?"
+    # Correlation pattern
     - pattern: "What is the relationship between {IV} and {DV} for {chemical_system}?"
       example: "What is the relationship between pH (2 to 12) and the rate of enzyme activity for catalase in potato extract?"
+    # Optimization pattern
+    - pattern: "What is the optimal {IV} for maximizing {DV} in {reaction_or_process}?"
+      example: "What is the optimal temperature for maximizing the yield of ester formation in Fischer esterification between ethanol and acetic acid?"
+    # Threshold/equilibrium pattern
+    - pattern: "At what {IV} value does {equilibrium_or_saturation} occur in {system}?"
+      example: "At what concentration does saturation occur for sodium chloride in water at temperatures between 20°C and 60°C?"
+    # Multi-substance comparative
+    - pattern: "Which of {substanceA}, {substanceB}, or {substanceC} has the greatest effect on {DV} under {conditions}?"
+      example: "Which of sodium hydroxide, potassium hydroxide, or calcium hydroxide has the greatest neutralizing capacity for 1.0M HCl?"
+    # Kinetics pattern
+    - pattern: "How does {IV} affect the rate constant of {reaction} at {conditions}?"
+      example: "How does temperature (25°C to 55°C) affect the rate constant of the iodine clock reaction at constant concentrations?"
   validation_rules:
     - must_contain_iv: true
     - must_contain_dv: true

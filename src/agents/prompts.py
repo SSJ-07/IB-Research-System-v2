@@ -733,6 +733,20 @@ IMPORTANT: You MUST return your review in valid JSON format with the following e
   }}
 }}
 
+SCORING GUIDE (use these band descriptors for consistent scoring):
+- 9-10: Exceptional - Exceeds IA expectations; publication-worthy methodology; exemplary alignment with IB criteria
+- 7-8: Good - Fully meets IA requirements with clear strengths; minor improvements possible
+- 5-6: Satisfactory - Meets basic requirements but has notable gaps or areas needing development
+- 3-4: Weak - Significant issues that would substantially affect IA quality; major revisions needed
+- 1-2: Poor - Fundamental problems making the investigation unsuitable for IA submission
+
+OFFICIAL IB CRITERIA MAPPING:
+- RQ & Design Fit → Exploration criterion (research question focus, methodology appropriateness)
+- Data/Analysis Viability → Analysis criterion (data processing, statistical methods, uncertainties)
+- Conclusion Traceability → Evaluation criterion (evidence-based conclusions, scientific significance)
+- Evaluation Potential → Evaluation criterion (limitations, improvements, critical reflection)
+- Safety & Practicality → Exploration criterion (feasibility within school lab constraints)
+
 CRITICAL REQUIREMENTS:
 - The response MUST be valid JSON that can be parsed by a JSON parser
 - All scores must be numbers (integers or decimals), NOT strings
@@ -1216,6 +1230,28 @@ IMPORTANT: You MUST return your review in valid JSON format with the following e
     "chemical_safety": <number>
   }}
 }}
+
+SCORING GUIDE (use these band descriptors for consistent scoring):
+- 9-10: Exceptional - Exceeds IA expectations; publication-worthy methodology; exemplary alignment with IB criteria
+- 7-8: Good - Fully meets IA requirements with clear strengths; minor improvements possible
+- 5-6: Satisfactory - Meets basic requirements but has notable gaps or areas needing development
+- 3-4: Weak - Significant issues that would substantially affect IA quality; major revisions needed
+- 1-2: Poor - Fundamental problems making the investigation unsuitable for IA submission
+
+OFFICIAL IB CRITERIA MAPPING:
+- RQ & Design Fit → Exploration criterion (research question focus, methodology appropriateness)
+- Data/Analysis Viability → Analysis criterion (data processing, analytical techniques, uncertainties)
+- Conclusion Traceability → Evaluation criterion (evidence-based conclusions, scientific significance)
+- Evaluation Potential → Evaluation criterion (limitations, improvements, critical reflection)
+- Safety & Practicality → Exploration criterion (feasibility, chemical safety, waste disposal)
+
+CRITICAL REQUIREMENTS:
+- The response MUST be valid JSON that can be parsed by a JSON parser
+- All scores must be numbers (integers or decimals), NOT strings
+- All five core aspects must be included in both "reviews" and "scores"
+- Scores must be between 1 and 10
+- Do not include any text outside the JSON structure
+- Use double quotes for all JSON keys and string values
 
 Be critical but fair in your assessment. Your review should focus on actionable feedback that could improve the research idea, with special attention to analytical methods, chemical safety, reaction mechanisms, and waste disposal procedures aligned with IBDP Chemistry IA assessment criteria.
 Ensure all scores are integers or decimals between 1 and 10, and that you include reviews for all five core aspects.

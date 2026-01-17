@@ -192,3 +192,40 @@ export FLASK_RUN_PORT=5001
 
 
 **Need Help?** Check the code comments, configuration files in `config/`, or open an issue on GitHub.
+
+## Documentation
+
+For comprehensive documentation, see the [`docs/`](./docs/) directory:
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](./docs/ARCHITECTURE.md) | System architecture, code maps, and component diagrams |
+| [API Reference](./docs/API.md) | Complete API reference with all endpoints |
+| [Frontend Guide](./docs/FRONTEND.md) | Frontend architecture and JavaScript modules |
+| [Development Guide](./docs/DEVELOPMENT.md) | Developer setup and contribution guidelines |
+
+Additional documentation:
+- [Prompts & Metrics](./PROMPTS_AND_METRICS.md) - LLM prompts and evaluation metrics
+- [Railway Deployment](./RAILWAY_DEPLOYMENT.md) - Production deployment guide
+
+## Project Structure
+
+```
+IB-Research-System-v2/
+├── app.py                  # Main Flask application
+├── config/                 # Configuration files
+│   ├── config.yaml         # Main app configuration
+│   └── ib/                 # IB-specific configs
+├── src/                    # Source code
+│   ├── agents/             # AI agents (Ideation, Review, Retrieval)
+│   ├── mcts/               # Monte Carlo Tree Search
+│   └── retrieval_api/      # ScholarQA integration
+├── static/                 # Frontend assets (JS, CSS)
+├── templates/              # HTML templates
+├── docs/                   # Documentation
+└── requirements.txt        # Python dependencies
+```
+
+## License
+
+This project is for educational purposes.

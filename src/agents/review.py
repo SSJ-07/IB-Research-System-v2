@@ -16,13 +16,28 @@ class ReviewAgent(BaseAgent):
     """Agent for reviewing research ideas."""
 
     # Subject-specific aspect weights for IBDP IA criteria
+    # Aligned with official IB Science IA rubric (24 marks total):
+    # - Exploration (RQ, methodology): 6/24 = 25% → rq_design_fit
+    # - Analysis (data processing): 6/24 = 25% → data_analysis_viability
+    # - Evaluation (limitations, improvements): 6/24 = 25% → evaluation_potential
+    # - conclusion_traceability maps to parts of Analysis/Evaluation
+    # - safety_practicality is implicit feasibility check (not directly scored in IB)
     IBDP_ASPECT_WEIGHTS = {
-        "rq_design_fit": 0.2,
-        "data_analysis_viability": 0.2,
-        "conclusion_traceability": 0.2,
-        "evaluation_potential": 0.2,
-        "safety_practicality": 0.2
+        "rq_design_fit": 0.25,           # Maps to Exploration criterion
+        "data_analysis_viability": 0.25,  # Maps to Analysis criterion
+        "conclusion_traceability": 0.15,  # Maps to parts of Evaluation
+        "evaluation_potential": 0.25,     # Maps to Evaluation criterion
+        "safety_practicality": 0.10       # Feasibility check (implicit in Exploration)
     }
+
+    # IBDP aspect names for parsing (used in fallback extraction)
+    IBDP_ASPECTS = [
+        "rq_design_fit", "data_analysis_viability", "conclusion_traceability",
+        "evaluation_potential", "safety_practicality"
+    ]
+
+    # Default aspect names for non-IB subjects
+    DEFAULT_ASPECTS = ["novelty", "clarity", "feasibility", "effectiveness", "impact"]
     
     # Default aspect weights (for non-IB subjects)
     DEFAULT_ASPECT_WEIGHTS = {
@@ -198,10 +213,13 @@ class ReviewAgent(BaseAgent):
             except Exception as e:
                 logger.warning(f"Could not write debug file: {e}")
             
-            # Parse the response
-            parsed_data = self.parse_unified_review(content)
+            # Parse the response (pass subject for aspect-aware parsing)
+            parsed_data = self.parse_unified_review(content, subject=subject)
             
             # Calculate the weighted average score from individual scores
+            # Note: extra_scores (experimental_rigor, safety, analytical_rigor, chemical_safety)
+            # are preserved in parsed_data for informational purposes but NOT included in
+            # the weighted average as they are supplementary to the 5 core IBDP criteria
             if "scores" in parsed_data and parsed_data["scores"]:
                 scores = parsed_data["scores"]
                 valid_scores = {k: v for k, v in scores.items() if isinstance(v, (int, float))}
@@ -266,11 +284,15 @@ class ReviewAgent(BaseAgent):
                 "average_score": None  # Use None instead of 5.0 to indicate no valid score
             }
     
-    def parse_unified_review(self, response: str) -> Dict[str, Any]:
+    def parse_unified_review(self, response: str, subject: Optional[str] = None) -> Dict[str, Any]:
         """Parse the unified review response using direct string extraction.
-        
+
         This uses a more robust approach similar to ideation.py's refresh_idea
         to extract scores and reviews directly from the text.
+
+        Args:
+            response: The raw LLM response to parse
+            subject: Optional subject for subject-aware aspect parsing
         """
         result = {
             "scores": {},
@@ -345,10 +367,15 @@ class ReviewAgent(BaseAgent):
             logger.debug(f"JSON parsing exception details: {traceback.format_exc()}")
         
         logger.info("Direct JSON parsing failed, using string extraction methods")
-        
+
+        # Determine which aspects to look for based on subject
+        if subject and subject.lower() in ["physics", "chemistry"]:
+            aspects = self.IBDP_ASPECTS
+        else:
+            aspects = self.DEFAULT_ASPECTS
+
         # Method 2: Direct string extraction for structured JSON
         try:
-            aspects = ["novelty", "clarity", "feasibility", "effectiveness", "impact"]
             
             # Look for scores section using direct string search
             if '"scores"' in response:
@@ -416,8 +443,7 @@ class ReviewAgent(BaseAgent):
         if not result["scores"]:
             print("Trying direct extraction of scores and reviews from text")
             try:
-                aspects = ["novelty", "clarity", "feasibility", "effectiveness", "impact"]
-                
+                # aspects already determined above based on subject
                 for aspect in aspects:
                     # Look for score pattern like "novelty: 7" or "novelty score: 7"
                     # Handle various formats: "7", "7.0", "7/10", "7 out of 10", etc.
