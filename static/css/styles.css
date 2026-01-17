@@ -3759,18 +3759,53 @@ a:hover {
 .wizard-modal {
     position: absolute;
     background: white;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 20px;
-    max-width: 340px;
+    max-width: 380px;
+    min-width: 320px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     z-index: 10000;
 }
 
-.wizard-progress {
+.wizard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.wizard-step-count {
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: 500;
+}
+
+.wizard-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.wizard-close:hover {
+    color: #6b7280;
+}
+
+.wizard-progress-bar {
     height: 3px;
-    background: #374151;
+    background: #e5e7eb;
     border-radius: 2px;
     margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.wizard-progress {
+    height: 100%;
+    background: #374151;
+    border-radius: 2px;
     transition: width 0.3s ease;
 }
 
@@ -3880,18 +3915,17 @@ a:hover {
 }
 
 .demo-hint {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    position: fixed;
     background: #374151;
     color: white;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
-    margin-bottom: 8px;
-    animation: fadeInUp 0.3s ease;
+    z-index: 10001;
+    transform: translateX(-50%);
+    animation: fadeInHint 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
 .demo-hint::after {
@@ -3904,10 +3938,10 @@ a:hover {
     border-top-color: #374151;
 }
 
-@keyframes fadeInUp {
+@keyframes fadeInHint {
     from {
         opacity: 0;
-        transform: translateX(-50%) translateY(10px);
+        transform: translateX(-50%) translateY(5px);
     }
     to {
         opacity: 1;
