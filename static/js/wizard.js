@@ -62,16 +62,6 @@
             }
         },
         {
-            title: "Expand IA Sections",
-            text: "After generating your RQ, you can expand individual sections like Background Information, Procedure, and Research Design. Each section is AI-generated based on your specific research question.",
-            target: "#expand-buttons",
-            position: "top",
-            action: () => {
-                const buttons = document.getElementById('expand-buttons');
-                if (buttons) buttons.style.display = 'block';
-            }
-        },
-        {
             title: "Quality Score",
             text: "Your research idea is continuously evaluated against IB criteria. The score reflects novelty, feasibility, clarity, and alignment with IB expectations. Aim for 7+ for a strong foundation.",
             target: "#score-display",
@@ -238,7 +228,10 @@
             nextBtn.textContent = 'Next';
         }
 
-        // Position spotlight and modal
+        // Always keep modal centered
+        centerModal();
+
+        // Position spotlight to highlight target
         if (step.target) {
             const target = document.querySelector(step.target);
             if (target) {
@@ -247,22 +240,22 @@
 
                 setTimeout(() => {
                     const rect = target.getBoundingClientRect();
+                    // Ensure spotlight is visible with proper z-index
                     spotlight.style.display = 'block';
+                    spotlight.style.zIndex = '9998';
                     spotlight.style.top = (rect.top - 8) + 'px';
                     spotlight.style.left = (rect.left - 8) + 'px';
                     spotlight.style.width = (rect.width + 16) + 'px';
                     spotlight.style.height = (rect.height + 16) + 'px';
-
-                    // Position modal based on step.position
-                    positionModal(rect, step.position);
-                }, 100);
+                    
+                    // Ensure modal stays above spotlight
+                    wizardModal.style.zIndex = '10000';
+                }, 150);
             } else {
                 spotlight.style.display = 'none';
-                centerModal();
             }
         } else {
             spotlight.style.display = 'none';
-            centerModal();
         }
     }
 
@@ -270,43 +263,6 @@
         wizardModal.style.top = '50%';
         wizardModal.style.left = '50%';
         wizardModal.style.transform = 'translate(-50%, -50%)';
-    }
-
-    function positionModal(targetRect, position) {
-        const modalRect = wizardModal.getBoundingClientRect();
-        const padding = 20;
-
-        wizardModal.style.transform = 'none';
-
-        switch (position) {
-            case 'top':
-                wizardModal.style.top = Math.max(10, targetRect.top - modalRect.height - padding) + 'px';
-                wizardModal.style.left = Math.max(10, targetRect.left + targetRect.width / 2 - modalRect.width / 2) + 'px';
-                break;
-            case 'bottom':
-                wizardModal.style.top = (targetRect.bottom + padding) + 'px';
-                wizardModal.style.left = Math.max(10, targetRect.left + targetRect.width / 2 - modalRect.width / 2) + 'px';
-                break;
-            case 'left':
-                wizardModal.style.top = Math.max(10, targetRect.top + targetRect.height / 2 - modalRect.height / 2) + 'px';
-                wizardModal.style.left = Math.max(10, targetRect.left - modalRect.width - padding) + 'px';
-                break;
-            case 'right':
-                wizardModal.style.top = Math.max(10, targetRect.top + targetRect.height / 2 - modalRect.height / 2) + 'px';
-                wizardModal.style.left = (targetRect.right + padding) + 'px';
-                break;
-        }
-
-        // Keep modal in viewport
-        const newRect = wizardModal.getBoundingClientRect();
-        if (newRect.left < 10) wizardModal.style.left = '10px';
-        if (newRect.right > window.innerWidth - 10) {
-            wizardModal.style.left = (window.innerWidth - newRect.width - 10) + 'px';
-        }
-        if (newRect.top < 10) wizardModal.style.top = '10px';
-        if (newRect.bottom > window.innerHeight - 10) {
-            wizardModal.style.top = (window.innerHeight - newRect.height - 10) + 'px';
-        }
     }
 
     function nextStep() {

@@ -3897,6 +3897,13 @@ a:hover {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
+    outline: none;
+}
+
+.wizard-btn:focus,
+.wizard-btn:active {
+    outline: none;
+    box-shadow: none;
 }
 
 .wizard-skip {
