@@ -65,7 +65,13 @@ window.sendMessage = function sendMessage() {
     loadingDiv.slideDown();
     chatArea.animate({ scrollTop: chatArea[0].scrollHeight }, 'slow');
 
-    $.ajax({
+    // Abort any existing chat request
+    if (activeChatRequest) {
+        activeChatRequest.abort();
+        activeChatRequest = null;
+    }
+
+    activeChatRequest = $.ajax({
         url: '/api/chat',
         type: 'POST',
         contentType: 'application/json',
@@ -74,6 +80,9 @@ window.sendMessage = function sendMessage() {
             subject: selectedSubject  // Include selected subject
         }),
         success: function (data) {
+            // Clear active request
+            activeChatRequest = null;
+            
             // Remove loading indicator
             loadingDiv.remove();
 
@@ -127,8 +136,18 @@ window.sendMessage = function sendMessage() {
             // After successful idea generation, collapse physics topics if any
         },
         error: function (xhr, status, error) {
+            // Clear active request
+            activeChatRequest = null;
+            
             // Remove loading indicator
             loadingDiv.remove();
+
+            // Handle cancelled requests (409 or abort)
+            if (xhr.status === 409 || status === 'abort') {
+                // Request was cancelled - this is expected when "New Idea" is clicked
+                console.log('Chat request cancelled:', xhr.responseJSON?.reason || 'abort');
+                return;
+            }
 
             var errorDiv = $('<div></div>')
                 .attr('data-sender', 'system')
@@ -137,9 +156,13 @@ window.sendMessage = function sendMessage() {
             chatArea.append(errorDiv);
             errorDiv.slideDown();
             chatArea.scrollTop(chatArea[0].scrollHeight);
+            
+            // Re-enable input immediately on error
+            input.prop('disabled', false);
+            input.focus();
         },
         complete: function () {
-            // Re-enable input
+            // Re-enable input (safety net in case error handler didn't run)
             input.prop('disabled', false);
             input.focus();
         }
@@ -192,6 +215,9 @@ let selectedSubject = 'physics';
 
 // Add this near the top of the file to ensure our function is available globally
 let toggleFromAutoGenerate; 
+
+// Track active chat request for cancellation
+let activeChatRequest = null;
 
 $(document).ready(function () {
     // #region agent log
@@ -3904,6 +3930,12 @@ window.updateTreeVisualization = updateTreeVisualization;
 // New Research reset function - clears all state and starts fresh
 function startNewResearch() {
     if (!confirm("Start a new research idea? This will clear the current one.")) return;
+
+    // Abort any active chat request
+    if (activeChatRequest) {
+        activeChatRequest.abort();
+        activeChatRequest = null;
+    }
 
     $.post('/api/reset', function() {
         // Clear major UI regions

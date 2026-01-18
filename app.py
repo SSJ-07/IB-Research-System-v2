@@ -1,8 +1,9 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, session
 from flask_socketio import SocketIO, emit
 import os
 import random
 import math  # Add math module for UCT calculations
+import secrets
 
 # Load environment variables from .env file
 try:
@@ -47,7 +48,7 @@ import pymupdf  # PyMuPDF for PDF parsing
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "uploads"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
-app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'secret!')
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(32))
 socketio = SocketIO(app)
 
 # Create uploads directory if it doesn't exist
@@ -109,6 +110,13 @@ current_node = None
 selected_subject = None  # Selected subject (Physics, Chemistry, etc.)
 current_state = None
 exploration_in_progress = False
+
+# Lock for thread safety
+import threading
+state_lock = threading.Lock()
+
+# Epoch-based state versioning for request cancellation
+state_epoch = 0
 
 # Initialize agents
 structured_review_agent = StructuredReviewAgent("config/config.yaml")
@@ -476,42 +484,87 @@ def subject():
 @app.route("/api/reset", methods=["POST"])
 def reset_all():
     """Reset all application state for a new research project."""
-    global main_idea, current_root, current_node, chat_messages, selected_subject, retrieval_results
+    global main_idea, current_root, current_node, current_state, chat_messages, selected_subject, retrieval_results, exploration_in_progress, knowledge_chunks, state_epoch
     
-    # Reset all global state
-    main_idea = ""
-    current_root = None
-    current_node = None
-    chat_messages = []
-    selected_subject = None
-    retrieval_results = {}
+    with state_lock:
+        # Increment epoch to invalidate all in-flight requests
+        state_epoch += 1
+        logger.info(f"Reset: incremented state_epoch to {state_epoch}")
+        
+        # Stop any ongoing exploration
+        if exploration_in_progress:
+            logger.warning("Stopping ongoing exploration due to reset")
+            exploration_in_progress = False
+        
+        # Reset all global state
+        main_idea = ""
+        current_root = None
+        current_node = None
+        current_state = None
+        chat_messages = []
+        # Don't reset selected_subject - preserve it so user doesn't have to reselect
+        # selected_subject = None
+        retrieval_results = {}
+        exploration_in_progress = False
+        knowledge_chunks = []
+        
+        logger.info("Application state reset - ready for new research project")
     
-    logger.info("Application state reset - ready for new research project")
     return jsonify({"success": True})
 
 
 @app.route("/api/chat", methods=["GET", "POST"])
 def chat():
-    global main_idea, current_root, current_node, current_state, exploration_in_progress, selected_subject
+    global main_idea, current_root, current_node, current_state, exploration_in_progress, selected_subject, chat_messages, retrieval_results
+    
+    logger.info(f"Chat endpoint called: method={request.method}, current_root={current_root}")
+    
     if request.method == "GET":
         return jsonify(chat_messages)
     else:
         data = request.get_json()
         if not data or "content" not in data:
+            logger.error(f"Invalid chat request: data={data}")
             return jsonify({"error": "Invalid payload"}), 400
         
         user_message = data["content"]
-        # Get subject from request, fallback to global variable
+        # Get subject from request, fallback to global variable, or default to "physics"
         request_subject = data.get("subject")
         if request_subject:
             selected_subject = request_subject  # Update global subject from request
+        elif selected_subject is None:
+            # If no subject is set, default to "physics"
+            selected_subject = "physics"
         
-        chat_messages.append({"role": "user", "content": user_message})
+        logger.info(f"Processing chat message: '{user_message[:50]}...', subject={selected_subject}")
+        
+        # Capture the epoch at request start
+        with state_lock:
+            my_epoch = state_epoch
+            logger.info(f"Chat request starting with epoch {my_epoch}")
         
         try:
+            logger.info(f"Starting chat processing: current_root={current_root}, current_node={current_node}, selected_subject={selected_subject}")
+            
+            # Ensure chat_messages is initialized
+            if chat_messages is None:
+                logger.error("chat_messages is None - reinitializing")
+                chat_messages = []
+            
+            chat_messages.append({"role": "user", "content": user_message})
             # First message: Initialize MCTS with research goal
             # Also treat as first message if current_root exists but current_node is None (after reset)
             if current_root is None or (current_root is not None and current_node is None):
+                logger.info(f"Entering first message block: current_root={current_root}, current_node={current_node}")
+                
+                # Double-check that we're really in the first message scenario
+                if current_root is not None and current_node is None:
+                    logger.warning("Unusual state: current_root exists but current_node is None")
+                
+                # Ensure we really are starting fresh
+                if current_root is None:
+                    current_node = None  # Ensure consistency
+                
                 # Store initial research goal in state
                 chat_messages.append(
                     {"role": "system", "content": "Generating initial idea..."}
@@ -519,24 +572,68 @@ def chat():
 
                 # Extract the abstract from the knowledge chunks (if available)
                 abstract_text = ""
-                for chunk in knowledge_chunks:
-                    if "abstract" in chunk:
-                        abstract_text = chunk["abstract"]
-                        break 
+                try:
+                    for chunk in knowledge_chunks:
+                        if "abstract" in chunk:
+                            abstract_text = chunk["abstract"]
+                            break
+                except Exception as e:
+                    logger.error(f"Error extracting abstract from knowledge chunks: {e}")
+                    abstract_text = ""
                 
                 # Create a root state that represents just the research goal
-                root_state = MCTSState(
-                    research_goal=user_message,
-                    current_idea=user_message,  # Root node "idea" is the research goal itself
-                    retrieved_knowledge=[abstract_text],  # Pass abstract as retrieved knowledge
-                    feedback={},
-                    reward=0.0,
-                    depth=0,
-                    subject=selected_subject,
-                )
+                try:
+                    logger.info(f"Creating MCTSState with research_goal='{user_message}', subject='{selected_subject}'")
+                    root_state = MCTSState(
+                        research_goal=user_message,
+                        current_idea=user_message,  # Root node "idea" is the research goal itself
+                        retrieved_knowledge=[abstract_text],  # Pass abstract as retrieved knowledge
+                        feedback={},
+                        reward=0.0,
+                        depth=0,
+                        subject=selected_subject,
+                    )
+                    logger.info(f"MCTSState created successfully")
+                except Exception as e:
+                    logger.error(f"Failed to create MCTSState: {e}", exc_info=True)
+                    error_message = f"Error creating research state: {str(e)}"
+                    chat_messages.append({"role": "system", "content": error_message})
+                    return jsonify({"error": error_message}), 500
+                
+                # Validate the root state before creating node
+                try:
+                    if not hasattr(root_state, 'research_goal') or not root_state.research_goal:
+                        raise ValueError("MCTSState missing required research_goal")
+                    if not hasattr(root_state, 'subject') or not root_state.subject:
+                        raise ValueError("MCTSState missing required subject")
+                    logger.info(f"MCTSState validation passed: research_goal='{root_state.research_goal}', subject='{root_state.subject}'")
+                except Exception as e:
+                    logger.error(f"MCTSState validation failed: {e}")
+                    error_message = f"Error validating research state: {str(e)}"
+                    chat_messages.append({"role": "system", "content": error_message})
+                    return jsonify({"error": error_message}), 500
                 
                 # Create root node with the research goal
-                current_root = MCTSNode(state=root_state)
+                try:
+                    logger.info(f"Creating root node with state: research_goal='{user_message}', subject='{selected_subject}'")
+                    
+                    # Check epoch before creating root node
+                    with state_lock:
+                        if my_epoch != state_epoch:
+                            logger.info(f"Request cancelled: epoch mismatch (request epoch {my_epoch}, current epoch {state_epoch})")
+                            return jsonify({"cancelled": True, "reason": "reset"}), 409
+                        
+                        current_root = MCTSNode(state=root_state)
+                        if current_root is None:
+                            raise ValueError("MCTSNode constructor returned None")
+                    
+                    logger.info(f"Root node created successfully with ID: {current_root.id}")
+                except Exception as e:
+                    logger.error(f"Failed to create MCTSNode: {e}", exc_info=True)
+                    error_message = f"Error creating research tree: {str(e)}"
+                    chat_messages.append({"role": "system", "content": error_message})
+                    return jsonify({"error": error_message}), 500
+                
                 
                 # Use the ideation agent to generate the idea
                 response = mcts.ideation_agent.execute_action(
@@ -585,15 +682,31 @@ def chat():
                         first_idea_state.reward = 0.0
                 
                 # Add the first generated idea as a child of the root node
-                if current_root is None:
-                    error_message = "Error: Root node was not created properly. Please try again."
+                try:
+                    with state_lock:
+                        # Check epoch before modifying state
+                        if my_epoch != state_epoch:
+                            logger.info(f"Request cancelled before add_child: epoch mismatch (request epoch {my_epoch}, current epoch {state_epoch})")
+                            return jsonify({"cancelled": True, "reason": "reset"}), 409
+                        
+                        if current_root is None:
+                            logger.error("CRITICAL: current_root is None before add_child!")
+                            return jsonify({"cancelled": True, "reason": "no_root"}), 409
+                        
+                        if not hasattr(current_root, 'add_child'):
+                            raise AttributeError(f"current_root object {type(current_root)} has no add_child method")
+                        
+                        first_idea_node = current_root.add_child(first_idea_state, "generate")
+                        logger.info(f"Successfully added child node with ID: {first_idea_node.id}")
+                        
+                        # Set current node to the first idea node (still within state_lock)
+                        current_node = first_idea_node
+                except Exception as e:
+                    error_message = f"Error adding idea to tree: {str(e)}"
+                    logger.error(error_message, exc_info=True)
+                    logger.error(f"current_root type: {type(current_root)}, value: {current_root}")
                     chat_messages.append({"role": "system", "content": error_message})
                     return jsonify({"error": error_message}), 500
-                
-                first_idea_node = current_root.add_child(first_idea_state, "generate")
-                
-                # Set current node to the first idea node
-                current_node = first_idea_node
                 
                 chat_messages.append({"role": "assistant", "content": llm_response})
                 
@@ -690,6 +803,7 @@ def chat():
             )
                 
         except Exception as e:
+            logger.error(f"Exception in chat processing: {e}", exc_info=True)
             error_message = f"Error processing chat: {str(e)}"
             traceback.print_exc()  # Print the stack trace for debugging
             chat_messages.append({"role": "system", "content": error_message})
