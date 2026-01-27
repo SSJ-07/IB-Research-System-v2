@@ -578,7 +578,7 @@ const retrieval = {
         $("#chat-box .retrieval-results").closest(".message-container").remove();
         
         // Add message to chat about improvement process
-        $("#chat-box").append(`
+        const loadingMessageContainer = $(`
             <div class="message-container" data-sender="system">
                 <div class="loading-state">
                     <div class="spinner"></div>
@@ -586,6 +586,7 @@ const retrieval = {
                 </div>
             </div>
         `);
+        $("#chat-box").append(loadingMessageContainer);
         
         // Scroll to bottom of chat
         $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
@@ -601,8 +602,8 @@ const retrieval = {
             success: (data) => {
                 console.log('Retrieval: Idea improvement response received', data);
                 
-                // Remove loading state
-                $("#chat-box .message-container:last-child .loading-state").remove();
+                // Remove the entire loading message container
+                loadingMessageContainer.remove();
                 
                 if (data.improved_idea) {
                     // Add a simple status message to chat
@@ -650,8 +651,8 @@ const retrieval = {
             error: (xhr, status, error) => {
                 console.error('Retrieval: Error improving idea', {status, error, response: xhr.responseText});
                 
-                // Remove loading state
-                $("#chat-box .message-container:last-child .loading-state").remove();
+                // Remove the entire loading message container
+                loadingMessageContainer.remove();
                 
                 const errorMsg = document.createElement('div');
                 errorMsg.setAttribute('data-sender', 'system');
