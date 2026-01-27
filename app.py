@@ -3056,7 +3056,18 @@ def approve_section(section):
     
     try:
         if current_node:
-            # Store section content in state
+            # Initialize expanded_sections and section_citations if they don't exist
+            if not hasattr(current_node.state, 'expanded_sections'):
+                current_node.state.expanded_sections = {}
+            if not hasattr(current_node.state, 'section_citations'):
+                current_node.state.section_citations = {}
+            
+            # Store section content in both places for consistency
+            # Store in expanded_sections (used by expand endpoints)
+            current_node.state.expanded_sections[section] = content
+            current_node.state.section_citations[section] = citations
+            
+            # Also store in individual fields (for backward compatibility)
             if section == "background":
                 current_node.state.background_content = content
                 current_node.state.background_citations = citations
@@ -3074,6 +3085,53 @@ def approve_section(section):
         error_trace = traceback.format_exc()
         logger.error(f"Error approving section {section}: {str(e)}\n{error_trace}")
         return jsonify({"error": f"Failed to approve section: {str(e)}"}), 500
+
+@app.route("/api/get_approved_sections", methods=["GET"])
+def get_approved_sections():
+    """Get all approved sections from the current node state."""
+    global current_node
+    
+    try:
+        if not current_node:
+            return jsonify({"error": "No current node found"}), 400
+        
+        sections = {}
+        
+        # Check expanded_sections first (preferred)
+        if hasattr(current_node.state, 'expanded_sections') and current_node.state.expanded_sections:
+            for section_name in ['background', 'procedure', 'research_design']:
+                if section_name in current_node.state.expanded_sections:
+                    content = current_node.state.expanded_sections[section_name]
+                    citations = []
+                    if hasattr(current_node.state, 'section_citations') and current_node.state.section_citations:
+                        citations = current_node.state.section_citations.get(section_name, [])
+                    sections[section_name] = {
+                        "content": content,
+                        "citations": citations
+                    }
+        else:
+            # Fallback to individual fields for backward compatibility
+            if hasattr(current_node.state, 'background_content') and current_node.state.background_content:
+                sections['background'] = {
+                    "content": current_node.state.background_content,
+                    "citations": getattr(current_node.state, 'background_citations', [])
+                }
+            if hasattr(current_node.state, 'procedure_content') and current_node.state.procedure_content:
+                sections['procedure'] = {
+                    "content": current_node.state.procedure_content,
+                    "citations": getattr(current_node.state, 'procedure_citations', [])
+                }
+            if hasattr(current_node.state, 'research_design_content') and current_node.state.research_design_content:
+                sections['research_design'] = {
+                    "content": current_node.state.research_design_content,
+                    "citations": getattr(current_node.state, 'research_design_citations', [])
+                }
+        
+        return jsonify({"sections": sections})
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        logger.error(f"Error getting approved sections: {str(e)}\n{error_trace}")
+        return jsonify({"error": f"Failed to get approved sections: {str(e)}"}), 500
 
 def generate_citation_query(section_type: str, ia_topic: str, rq: str) -> str:
     """Generate ScholarQA query for citation retrieval."""
@@ -3301,17 +3359,23 @@ def expand_background():
             state_dict["previous_content"] = previous_content
         
         # Generate section
-        response = ideation_agent.execute_action(
-            "expand_background",
-            state_dict
-        )
-        
-        content = response.get("content", "")
+        try:
+            response = ideation_agent.execute_action(
+                "expand_background",
+                state_dict
+            )
+            content = response.get("content", "")
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            logger.error(f"Error in ideation_agent.execute_action for background: {str(e)}\n{error_trace}")
+            return jsonify({"error": f"Failed to generate background section: {str(e)}"}), 500
         
         # Update state
-        if not current_node.state.expanded_sections:
+        if not hasattr(current_node.state, 'expanded_sections') or not current_node.state.expanded_sections:
             current_node.state.expanded_sections = {}
         current_node.state.expanded_sections["background"] = content
+        if not hasattr(current_node.state, 'section_citations'):
+            current_node.state.section_citations = {}
         current_node.state.section_citations["background"] = citations_list
         
         return jsonify({
@@ -3371,17 +3435,23 @@ def expand_procedure():
         if previous_content:
             state_dict["previous_content"] = previous_content
         
-        response = ideation_agent.execute_action(
-            "expand_procedure",
-            state_dict
-        )
-        
-        content = response.get("content", "")
+        try:
+            response = ideation_agent.execute_action(
+                "expand_procedure",
+                state_dict
+            )
+            content = response.get("content", "")
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            logger.error(f"Error in ideation_agent.execute_action for procedure: {str(e)}\n{error_trace}")
+            return jsonify({"error": f"Failed to generate procedure section: {str(e)}"}), 500
         
         # Update state
-        if not current_node.state.expanded_sections:
+        if not hasattr(current_node.state, 'expanded_sections') or not current_node.state.expanded_sections:
             current_node.state.expanded_sections = {}
         current_node.state.expanded_sections["procedure"] = content
+        if not hasattr(current_node.state, 'section_citations'):
+            current_node.state.section_citations = {}
         current_node.state.section_citations["procedure"] = citations_list
         
         return jsonify({
@@ -3438,15 +3508,19 @@ def expand_research_design():
         if previous_content:
             state_dict["previous_content"] = previous_content
         
-        response = ideation_agent.execute_action(
-            "expand_research_design",
-            state_dict
-        )
-        
-        content = response.get("content", "")
+        try:
+            response = ideation_agent.execute_action(
+                "expand_research_design",
+                state_dict
+            )
+            content = response.get("content", "")
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            logger.error(f"Error in ideation_agent.execute_action for research_design: {str(e)}\n{error_trace}")
+            return jsonify({"error": f"Failed to generate research_design section: {str(e)}"}), 500
         
         # Update state
-        if not current_node.state.expanded_sections:
+        if not hasattr(current_node.state, 'expanded_sections') or not current_node.state.expanded_sections:
             current_node.state.expanded_sections = {}
         current_node.state.expanded_sections["research_design"] = content
         # Research Design doesn't need citations, so don't store them

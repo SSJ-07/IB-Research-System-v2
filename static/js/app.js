@@ -4386,6 +4386,9 @@ function switchTab(tabName) {
         placeholder.hide(); // Never show brief placeholder in IA section tab
         iaSections.show().addClass('active');
         
+        // Load approved sections from backend
+        loadApprovedSections();
+        
         // Handle IA section placeholder visibility
         const iaPlaceholder = $('#ia-placeholder');
         const hasIATopic = $('#ia-topic-content').text().trim().length > 0;
@@ -4405,6 +4408,35 @@ function switchTab(tabName) {
     } else {
         console.warn('Unknown tab name provided to switchTab:', tabName);
     }
+}
+
+// Load approved sections from backend
+function loadApprovedSections() {
+    $.ajax({
+        url: '/api/get_approved_sections',
+        method: 'GET',
+        success: function(data) {
+            if (data.sections) {
+                // Load each approved section
+                for (const [section, sectionData] of Object.entries(data.sections)) {
+                    if (sectionData.content) {
+                        displayExpandedSection(section, sectionData.content, sectionData.citations || []);
+                        // Show the section
+                        $(`#${section}-section`).show();
+                    }
+                }
+                
+                // Hide placeholder if we have any sections
+                if (Object.keys(data.sections).length > 0) {
+                    $('#ia-placeholder').hide();
+                }
+            }
+        },
+        error: function(xhr) {
+            console.error('Error loading approved sections:', xhr);
+            // Don't show error to user, just log it
+        }
+    });
 }
 
 // Attach tab button handlers
